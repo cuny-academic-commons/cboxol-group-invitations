@@ -6,8 +6,8 @@
  * Version:           1.0.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
- * Author:            CUNY Academic Commons
- * Author URI:        https://commons.gc.cuny.edu
+ * Author:            Commons In A Box team
+ * Author URI:        https://commons-in-a-obx
  * License:           GPL-2.0+
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       cboxol-group-invitations
