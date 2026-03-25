@@ -22,6 +22,12 @@
 	<rule ref="WordPress">
 		<!-- Namespace declaration is a single, long line — allow it. -->
 		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+		
+		<!-- Allow PSR-4 autoloading. -->
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+
+		<!-- Use short array syntax. -->
+		<exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
 	</rule>
 
 	<!-- Require Yoda conditions per WP style. -->
