@@ -83,7 +83,9 @@ class App {
 			return;
 		}
 
-		/** @var array{dependencies: string[], version: string} $asset */
+		/*
+		 * @var array{dependencies: string[], version: string} $asset Built asset info
+		 */
 		$asset = require $asset_file;
 
 		wp_enqueue_script(
