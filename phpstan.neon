@@ -11,12 +11,12 @@ parameters:
     paths:
         - classes
         - cboxol-group-invitations.php
-        - constants.php
 
     # Bootstrap BuddyPress stubs so PHPStan knows bp_* function signatures.
     # The stubs are installed by gin0115/buddypress-stubs via Composer.
     bootstrapFiles:
         - vendor/gin0115/buddypress-stubs/buddypress-stubs.php
+        - constants.php
 
     # -------------------------------------------------------------------
     # Commons In A Box / OpenLab
