@@ -35,4 +35,4 @@ parameters:
     # Suppress errors for CBOX/OpenLab helper functions that won't be
     # resolvable without the full plugin stack.
     ignoreErrors:
-        - '#^Function (cbox_|openlab_)\S+ not found\.$#'
+        #- '#^Function (cbox_|openlab_)\S+ not found\.$#'
