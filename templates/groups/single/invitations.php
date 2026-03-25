@@ -4,6 +4,7 @@
  *
  * @package CBOX\OL\GroupInvitations
  */
+
 ?>
 
 Group invitations will appear here
