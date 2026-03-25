@@ -127,7 +127,7 @@ class App {
 	 */
 	public function render_invitations_screen(): void {
 		add_action( 'bp_template_content', [ $this, 'render_invitations_template' ] );
-		bp_core_load_template( 'groups/single/plugins' );
+		bp_core_load_template( [ 'groups/single/plugins' ] );
 	}
 
 	/**
