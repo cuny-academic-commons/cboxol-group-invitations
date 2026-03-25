@@ -1,0 +1,38 @@
+includes:
+    # WordPress-specific PHPStan rules and function stubs are provided by
+    # szepeviktor/phpstan-wordpress, which is auto-loaded via the
+    # phpstan/extension-installer Composer plugin.
+
+parameters:
+    # Strict analysis level.
+    level: 8
+
+    # Source paths to analyse.
+    paths:
+        - classes
+        - cboxol-group-invitations.php
+        - constants.php
+
+    # Bootstrap BuddyPress stubs so PHPStan knows bp_* function signatures.
+    # The stubs are installed by gin0115/buddypress-stubs via Composer.
+    bootstrapFiles:
+        - vendor/gin0115/buddypress-stubs/buddypress-stubs.php
+
+    # -------------------------------------------------------------------
+    # Commons In A Box / OpenLab
+    # -------------------------------------------------------------------
+    # cbox-openlab-core and related plugins are not available in CI, so we
+    # cannot include them here unconditionally.  If you are running PHPStan
+    # locally with the full WP stack present, create a phpstan.local.neon
+    # that extends this file and adds the relevant directories, e.g.:
+    #
+    #   parameters:
+    #     scanDirectories:
+    #       - /path/to/wp-content/plugins/commons-in-a-box
+    #       - /path/to/wp-content/plugins/cbox-openlab-core
+    # -------------------------------------------------------------------
+
+    # Suppress errors for CBOX/OpenLab helper functions that won't be
+    # resolvable without the full plugin stack.
+    ignoreErrors:
+        - '#^Function (cbox_|openlab_)\S+ not found\.$#'

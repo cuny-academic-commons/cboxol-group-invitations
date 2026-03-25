@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<ruleset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         name="CBOX OpenLab Group Invitations"
+         xsi:noNamespaceSchemaLocation="vendor/squizlabs/php_codesniffer/phpcs.xsd">
+
+	<description>WordPress Coding Standards for CBOX OpenLab Group Invitations.</description>
+
+	<!-- What to scan. -->
+	<file>.</file>
+
+	<!-- Exclude generated/third-party directories. -->
+	<exclude-pattern>vendor/</exclude-pattern>
+	<exclude-pattern>node_modules/</exclude-pattern>
+	<exclude-pattern>build/</exclude-pattern>
+
+	<!-- Show progress and sniff codes in results. -->
+	<arg value="sp"/>
+	<arg name="colors"/>
+	<arg name="extensions" value="php"/>
+
+	<!-- Enforce WordPress coding standards. -->
+	<rule ref="WordPress">
+		<!-- Namespace declaration is a single, long line — allow it. -->
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+	</rule>
+
+	<!-- Require Yoda conditions per WP style. -->
+	<rule ref="WordPress.PHP.YodaConditions"/>
+
+	<!-- Target PHP 8.0+. -->
+	<config name="minimum_supported_wp_version" value="6.0"/>
+
+	<!-- Set text-domain. -->
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array" value="cboxol-group-invitations"/>
+		</properties>
+	</rule>
+
+</ruleset>

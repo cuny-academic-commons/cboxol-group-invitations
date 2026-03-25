@@ -1,0 +1,16 @@
+{
+	"name": "cboxol-group-invitations",
+	"description": "Enhanced group invitations for Commons In A Box OpenLab",
+	"version": "1.0.0",
+	"private": true,
+	"license": "GPL-2.0+",
+	"scripts": {
+		"build": "wp-scripts build",
+		"start": "wp-scripts start",
+		"lint:js": "wp-scripts lint-js assets/src",
+		"lint:css": "wp-scripts lint-style assets/src"
+	},
+	"devDependencies": {
+		"@wordpress/scripts": "^30.0.0"
+	}
+}
