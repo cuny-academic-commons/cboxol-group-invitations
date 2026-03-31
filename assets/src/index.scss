@@ -1,9 +1,144 @@
 /**
- * Base styles for CBOX OpenLab Group Invitations.
+ * Styles for CBOX OpenLab Group Invitations.
  *
- * Add component styles here as the UI is developed.
+ * Tagify's base stylesheet is imported in index.js so webpack can extract it.
+ * The rules below customise Tagify's CSS custom properties and add
+ * plugin-specific component styles — no dependency on Bootstrap.
  */
 
-.cboxol-group-invitations {
-	// Placeholder — styles will be added here.
+// ---------------------------------------------------------------------------
+// Tag input widget
+// ---------------------------------------------------------------------------
+
+.tagify {
+	// Override Tagify's CSS custom properties for a clean, standalone look.
+	--tags-border-color:       #d1d5db;
+	--tags-hover-border-color: #9ca3af;
+	--tags-focus-border-color: #6366f1;
+
+	--tag-border-radius: 999px; // Pill shape.
+	--tag-bg:            #eef2ff;
+	--tag-hover:         #e0e7ff;
+	--tag-text-color:    #3730a3;
+	--tag-pad:           0.25em 0.6em;
+
+	--tag-invalid-color: #b91c1c;
+	--tag-invalid-bg:    rgba(254, 202, 202, 0.5);
+	--tag-remove-btn-color:       #3730a3;
+	--tag-remove-btn-bg--hover:   #4338ca;
+
+	--placeholder-color:       rgba(0, 0, 0, 0.38);
+	--placeholder-color-focus: rgba(0, 0, 0, 0.22);
+
+	// Layout — match a typical text-input feel.
+	width: 100%;
+	min-height: 52px;
+	border-radius: 6px;
+	padding: 4px 6px;
+	background: #fff;
+	cursor: text;
+
+	// Inherit the page's base font size rather than fighting it; browsers
+	// default to 16px and WP admin/front-end themes typically keep that.
+	// Explicitly resetting here ensures Tagify never shrinks below 1rem.
+	font-size: 1rem;
+	line-height: 1.5;
+
+	// Smooth focus ring instead of a hard border swap.
+	&.tagify--focus {
+		outline: none;
+		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+	}
+
+	// Individual tag bubbles.
+	.tagify__tag {
+		margin: 3px 2px;
+
+		// Hover/focus state: deepen the background slightly.
+		&:hover:not([readonly]) div::before,
+		&:focus div::before {
+			--tag-bg-inset: -2px;
+			--tag-bg: var(--tag-hover);
+		}
+	}
+
+	// Remove (×) button.
+	.tagify__tag__removeBtn {
+		width: 16px;
+		height: 16px;
+		font-size: 13px;
+		margin-inline-end: 5px;
+
+		&:hover {
+			background: var(--tag-remove-btn-bg--hover);
+			color: #fff;
+		}
+	}
+
+	// Inline text input area.
+	.tagify__input {
+		margin: 3px;
+		padding: 0 0.25em;
+		min-width: 140px;
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Suggestions dropdown
+// ---------------------------------------------------------------------------
+
+// Accent colour used for the focused/active item and border highlight.
+:root {
+	--tagify-dd-color-primary: #6366f1;
+	--tagify-dd-bg-color:      #fff;
+	--tagify-dd-text-color:    #111827;
+	--tagify-dd-item-pad:      0.5em 0.75em;
+}
+
+.tagify__dropdown.cboxol-gi-suggestions {
+	.tagify__dropdown__wrapper {
+		border-radius: 6px;
+		border-color: #e5e7eb;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+		overflow: hidden;
+	}
+
+	.tagify__dropdown__item {
+		border-radius: 4px;
+	}
+}
+
+// Two-line suggestion item (display name + email).
+.cboxol-gi-suggestion {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	padding: var(--tagify-dd-item-pad);
+
+	&__name {
+		font-weight: 600;
+		font-size: 1rem;
+		line-height: 1.3;
+		color: #111827;
+	}
+
+	&__email {
+		font-size: 0.9375rem;
+		line-height: 1.3;
+		color: #6b7280;
+	}
+
+	// When the item is highlighted, invert text colours for legibility.
+	.tagify__dropdown__item--active & {
+		&__name  { color: #fff; }
+		&__email { color: rgba(255, 255, 255, 0.8); }
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Field wrapper — labels, spacing, helper text
+// ---------------------------------------------------------------------------
+
+.cboxol-gi-field-wrapper {
+	margin-bottom: 0.75rem;
 }

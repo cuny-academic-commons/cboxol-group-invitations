@@ -12,5 +12,8 @@
 	},
 	"devDependencies": {
 		"@wordpress/scripts": "^30.0.0"
+	},
+	"dependencies": {
+		"@yaireo/tagify": "^4.36.0"
 	}
 }

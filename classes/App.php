@@ -66,6 +66,9 @@ class App {
 
 		// Enqueue built assets on the front end.
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+
+		// Register the REST API endpoint for member autosuggest.
+		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
 	}
 
 	/**
@@ -154,7 +157,7 @@ class App {
 		}
 
 		$group = groups_get_current_group();
-		bp_core_redirect( bp_get_group_url( $group, bp_groups_get_path_chunks( [ 'invitations' ] ) ) );
+	//	bp_core_redirect( bp_get_group_url( $group, bp_groups_get_path_chunks( [ 'invitations' ] ) ) );
 	}
 
 	/**
@@ -220,6 +223,17 @@ class App {
 			true
 		);
 
+		// Pass the REST endpoint URL and a nonce to the front-end script.
+		wp_localize_script(
+			'cboxol-group-invitations',
+			'cboxolGroupInvitations',
+			[
+				'restEndpoint'  => rest_url( 'cboxol-group-invitations/v1/suggest-members' ),
+				'nonce'         => wp_create_nonce( 'wp_rest' ),
+				'allowedDomains' => self::get_allowed_email_domains(),
+			]
+		);
+
 		$style_file = CBOXOL_GROUP_INVITATIONS_DIR . 'build/index.css';
 		if ( file_exists( $style_file ) ) {
 			wp_enqueue_style(
@@ -229,5 +243,81 @@ class App {
 				$asset['version']
 			);
 		}
+	}
+
+	/**
+	 * Returns the site's allowed email domains from the `limited_email_domains`
+	 * site option set by cbox-openlab-core.
+	 *
+	 * An empty array means no domain restriction is configured.
+	 *
+	 * @return string[]
+	 */
+	private static function get_allowed_email_domains(): array {
+		$raw = get_site_option( 'limited_email_domains' );
+
+		if ( ! is_array( $raw ) ) {
+			return [];
+		}
+
+		return array_values( array_filter( array_map( 'strval', $raw ) ) );
+	}
+
+	/**
+	 * Register REST API routes for this plugin.
+	 *
+	 * @return void
+	 */
+	public function register_rest_routes(): void {
+		register_rest_route(
+			'cboxol-group-invitations/v1',
+			'/suggest-members',
+			[
+				'methods'             => \WP_REST_Server::READABLE,
+				'callback'            => [ $this, 'rest_suggest_members' ],
+				'permission_callback' => static fn() => is_user_logged_in(),
+				'args'                => [
+					'query' => [
+						'type'              => 'string',
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_text_field',
+						'validate_callback' => static fn( $v ) => strlen( trim( $v ) ) >= 2,
+					],
+				],
+			]
+		);
+	}
+
+	/**
+	 * REST callback: search community members by display name or email address.
+	 *
+	 * Returns an array of suggestion objects consumed by the EmailTagInput
+	 * component on the front end:
+	 *   [{ "value": "jane@example.com", "displayName": "Jane Smith" }, …]
+	 *
+	 * @param \WP_REST_Request $request Incoming request.
+	 * @return \WP_REST_Response
+	 */
+	public function rest_suggest_members( \WP_REST_Request $request ): \WP_REST_Response {
+		$query = $request->get_param( 'query' );
+
+		$users = get_users(
+			[
+				'search'         => '*' . $query . '*',
+				'search_columns' => [ 'display_name', 'user_email' ],
+				'number'         => 10,
+				'fields'         => [ 'ID', 'display_name', 'user_email' ],
+			]
+		);
+
+		$suggestions = array_map(
+			static fn( $user ) => [
+				'value'       => $user->user_email,
+				'displayName' => $user->display_name,
+			],
+			$users
+		);
+
+		return rest_ensure_response( array_values( $suggestions ) );
 	}
 }

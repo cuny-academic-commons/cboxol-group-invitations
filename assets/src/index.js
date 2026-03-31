@@ -5,10 +5,37 @@
  * The compiled bundle is enqueued by App::enqueue_assets() in PHP.
  */
 
-// Import styles — webpack (via @wordpress/scripts MiniCssExtractPlugin) will
-// emit a separate build/index.css file.
+// Tagify base styles (extracted to build/index.css by MiniCssExtractPlugin).
+import '@yaireo/tagify/dist/tagify.css';
+
+// Plugin-specific style overrides.
 import './index.scss';
 
-// Plugin initialisation placeholder.
-// Add React components or vanilla JS here as the feature is developed.
-console.log( 'cboxol-group-invitations loaded' ); // eslint-disable-line no-console
+import EmailTagInput from './email-tag-input';
+import { createDomainValidator } from './validators';
+
+document.addEventListener( 'DOMContentLoaded', () => {
+	const inputEl = document.getElementById( 'email-tag-input' );
+
+	if ( ! inputEl ) {
+		return;
+	}
+
+	const {
+		restEndpoint   = '',
+		nonce          = '',
+		allowedDomains = [],
+	} = window.cboxolGroupInvitations || {};
+
+	const emailTagInput = new EmailTagInput( inputEl, {
+		endpoint: restEndpoint,
+		nonce,
+	} );
+
+	// Register the domain whitelist validator if restrictions are configured.
+	// The factory is a no-op when allowedDomains is empty, but we skip it
+	// entirely here to avoid the (negligible) closure overhead on open sites.
+	if ( allowedDomains.length ) {
+		emailTagInput.addValidator( createDomainValidator( allowedDomains ) );
+	}
+} );
