@@ -161,7 +161,9 @@ class App {
 		}
 
 		$group = groups_get_current_group();
-	//	bp_core_redirect( bp_get_group_url( $group, bp_groups_get_path_chunks( [ 'invitations' ] ) ) );
+
+		// phpcs:ignore
+		//bp_core_redirect( bp_get_group_url( $group, bp_groups_get_path_chunks( [ 'invitations' ] ) ) );
 	}
 
 	/**
@@ -345,11 +347,11 @@ class App {
 	 *   [{ "value": "jsmith", "userId": 5, "displayName": "Jane Smith",
 	 *      "userNicename": "jsmith" }, …]
 	 *
-	 * @param \WP_REST_Request $request
+	 * @param \WP_REST_Request $request Request object.
 	 * @return \WP_REST_Response
 	 */
 	public function rest_suggest_members( \WP_REST_Request $request ): \WP_REST_Response {
-		$query         = $request->get_param( 'query' );
+		$query          = $request->get_param( 'query' );
 		$match_by_email = current_user_can( 'cboxol_match_users_by_email_address' );
 
 		$search_columns = [ 'display_name', 'user_nicename' ];
@@ -416,7 +418,7 @@ class App {
 	 * Response (not found / not accessible):
 	 *   { "found": false }
 	 *
-	 * @param \WP_REST_Request $request
+	 * @param \WP_REST_Request $request Request object.
 	 * @return \WP_REST_Response
 	 */
 	public function rest_validate_address( \WP_REST_Request $request ): \WP_REST_Response {
@@ -464,7 +466,7 @@ class App {
 	 *
 	 * Falls back to returning all users if the BP Friends component is not active.
 	 *
-	 * @param object[] $users
+	 * @param object[] $users Array of WP_User-like objects with at least an ID property.
 	 * @return object[]
 	 */
 	private function filter_to_friends( array $users ): array {
@@ -488,7 +490,7 @@ class App {
 	 *
 	 * Returns true if the BP Friends component is not active (graceful fallback).
 	 *
-	 * @param int $user_id
+	 * @param int $user_id User ID to check.
 	 * @return bool
 	 */
 	private function is_bp_friend( int $user_id ): bool {
