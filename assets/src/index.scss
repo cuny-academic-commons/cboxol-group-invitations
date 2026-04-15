@@ -22,8 +22,8 @@
 	--tag-text-color:    #3730a3;
 	--tag-pad:           0.25em 0.6em;
 
-	--tag-invalid-color: #b91c1c;
-	--tag-invalid-bg:    rgba(254, 202, 202, 0.5);
+	--tag-invalid-color: #000;
+	--tag-invalid-bg:    rgba(254, 202, 202, 0.7);
 	--tag-remove-btn-color:       #3730a3;
 	--tag-remove-btn-bg--hover:   #4338ca;
 
@@ -75,6 +75,10 @@
 		padding: 0 0.25em;
 		min-width: 140px;
 	}
+}
+
+.tagify__tag.tagify--notAllowed:not(.tagify__tag--editable) div>span {
+	opacity: 1;
 }
 
 // ---------------------------------------------------------------------------
