@@ -160,6 +160,12 @@ this._syncHiddenInputs();
 return;
 }
 
+// Tag already failed format validation — skip API call.
+if ( typeof tagData.__isValid === 'string' ) {
+this._syncHiddenInputs();
+return;
+}
+
 // 1. Run local pre-validators (e.g. domain whitelist) first.
 //    These are fast/synchronous-ish checks that don't need a round-trip.
 for ( const validator of this.settings.validators ) {
@@ -350,7 +356,7 @@ secondaryHtml = `<span class="cboxol-gi-suggestion__email">${ esc( item.value ) 
 
 return `
 <div
-class="${ this.classNames.dropdownItem } cboxol-gi-suggestion"
+class="${ this.settings.classNames.dropdownItem } cboxol-gi-suggestion"
 ${ this.getAttributes( item ) }
 tabindex="0"
 role="option"
