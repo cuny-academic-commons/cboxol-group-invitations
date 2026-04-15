@@ -466,7 +466,7 @@ class App {
 	 *
 	 * Falls back to returning all users if the BP Friends component is not active.
 	 *
-	 * @param object[] $users Array of WP_User-like objects with at least an ID property.
+	 * @param \WP_User[] $users Array of WP_User objects.
 	 * @return object[]
 	 */
 	private function filter_to_friends( array $users ): array {

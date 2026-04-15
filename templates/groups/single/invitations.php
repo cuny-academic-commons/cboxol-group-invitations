@@ -13,6 +13,8 @@ $form_action = bp_get_group_url(
 	bp_groups_get_path_chunks( [ 'invite-anyone', 'send' ] )
 );
 
+$invite_anyone_slug = defined( 'BP_INVITE_ANYONE_SLUG' ) ? BP_INVITE_ANYONE_SLUG : 'invite-anyone';
+
 ?>
 
 <form method="post" id="import-members-form" class="form-panel" action="<?php echo esc_url( $form_action ); ?>">
@@ -25,7 +27,7 @@ $form_action = bp_get_group_url(
 
 		<?php $show_submit_border = false; ?>
 
-		<?php if ( $import_results ) : ?>
+		<?php if ( ! empty( $import_results ) ) : ?>
 			<?php if ( ! empty( $import_results['success'] ) ) : ?>
 				<?php
 				$user_links = [];
@@ -35,10 +37,15 @@ $form_action = bp_get_group_url(
 						continue;
 					}
 
+					$display_name = bp_core_get_user_displayname( $success_user->ID );
+					if ( ! is_string( $display_name ) || '' === $display_name ) {
+						$display_name = $success_email;
+					}
+
 					$user_links[] = sprintf(
 						'<li><a href="%s">%s</a> (%s)</li>',
 						esc_attr( bp_core_get_user_domain( $success_user->ID ) ),
-						esc_html( bp_core_get_user_displayname( $success_user->ID ) ),
+						esc_html( $display_name ),
 						esc_html( $success_email )
 					);
 				}
@@ -94,7 +101,7 @@ $form_action = bp_get_group_url(
 					<?php
 					$invite_link = bp_members_get_user_url(
 						bp_loggedin_user_id(),
-						bp_members_get_path_chunks( [ BP_INVITE_ANYONE_SLUG ] )
+						bp_members_get_path_chunks( [ $invite_anyone_slug ] )
 					);
 					$invite_link = add_query_arg(
 						[
@@ -116,7 +123,7 @@ $form_action = bp_get_group_url(
 			$submit_border_class    = $show_submit_border ? ' import-results-section-submit-show-border' : '';
 			$group_invite_permalink = bp_get_group_url(
 				groups_get_current_group(),
-				bp_groups_get_path_chunks( [ BP_INVITE_ANYONE_SLUG ] )
+				bp_groups_get_path_chunks( [ $invite_anyone_slug ] )
 			);
 			?>
 

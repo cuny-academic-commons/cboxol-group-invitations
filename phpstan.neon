@@ -39,7 +39,7 @@ parameters:
         - '#^Function (cbox_|cboxol_|openlab_)\S+ not found\.$#'
 
         # buddypress-stubs library is out of date
-        - '#^Function (bp_get_group_manage_url|bp_get_group_url|bp_groups_get_path_chunks) not found\.$#'
+        - '#^Function (bp_get_group_manage_url|bp_get_group_url|bp_groups_get_path_chunks|bp_members_get_path_chunks|bp_members_get_user_url) not found\.$#'
 
         # invite-anyone
         - '#^Function (invite_anyone_)\S+ not found\.$#'
