@@ -67,8 +67,12 @@ class App {
 		// Enqueue built assets on the front end.
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 
-		// Register the REST API endpoint for member autosuggest.
+		// Register the REST API endpoints for member autosuggest and address validation.
 		add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
+
+		// Allow the cboxol_match_users_by_email_address capability to be granted via
+		// filters or role assignments without requiring a hard-coded role check here.
+		add_filter( 'map_meta_cap', [ $this, 'map_meta_cap' ], 10, 2 );
 	}
 
 	/**
@@ -223,14 +227,16 @@ class App {
 			true
 		);
 
-		// Pass the REST endpoint URL and a nonce to the front-end script.
+		// Pass REST endpoint URLs, nonce, and user capability flags to the front-end.
 		wp_localize_script(
 			'cboxol-group-invitations',
 			'cboxolGroupInvitations',
 			[
-				'restEndpoint'  => rest_url( 'cboxol-group-invitations/v1/suggest-members' ),
-				'nonce'         => wp_create_nonce( 'wp_rest' ),
-				'allowedDomains' => self::get_allowed_email_domains(),
+				'restEndpoint'     => rest_url( 'cboxol-group-invitations/v1/suggest-members' ),
+				'validateEndpoint' => rest_url( 'cboxol-group-invitations/v1/validate-address' ),
+				'nonce'            => wp_create_nonce( 'wp_rest' ),
+				'allowedDomains'   => self::get_allowed_email_domains(),
+				'matchByEmail'     => current_user_can( 'cboxol_match_users_by_email_address' ),
 			]
 		);
 
@@ -264,6 +270,24 @@ class App {
 	}
 
 	/**
+	 * Allows the cboxol_match_users_by_email_address capability to be mapped
+	 * (e.g. granted to specific roles via a filter added elsewhere).
+	 *
+	 * By default the cap maps to itself, meaning only users/roles that have been
+	 * explicitly granted it (or filtered to have it) will pass the check.
+	 *
+	 * @param string[] $caps    Primitive caps required.
+	 * @param string   $cap     Meta cap being checked.
+	 * @return string[]
+	 */
+	public function map_meta_cap( array $caps, string $cap ): array {
+		if ( 'cboxol_match_users_by_email_address' === $cap ) {
+			return [ 'cboxol_match_users_by_email_address' ];
+		}
+		return $caps;
+	}
+
+	/**
 	 * Register REST API routes for this plugin.
 	 *
 	 * @return void
@@ -286,38 +310,191 @@ class App {
 				],
 			]
 		);
+
+		register_rest_route(
+			'cboxol-group-invitations/v1',
+			'/validate-address',
+			[
+				'methods'             => \WP_REST_Server::READABLE,
+				'callback'            => [ $this, 'rest_validate_address' ],
+				'permission_callback' => static fn() => is_user_logged_in(),
+				'args'                => [
+					'email' => [
+						'type'              => 'string',
+						'required'          => true,
+						'sanitize_callback' => 'sanitize_email',
+						'validate_callback' => 'is_email',
+					],
+				],
+			]
+		);
 	}
 
 	/**
-	 * REST callback: search community members by display name or email address.
+	 * REST callback: search community members by name / username / (privileged) email.
 	 *
-	 * Returns an array of suggestion objects consumed by the EmailTagInput
-	 * component on the front end:
-	 *   [{ "value": "jane@example.com", "displayName": "Jane Smith" }, …]
+	 * Privileged users (cboxol_match_users_by_email_address) get results that
+	 * include the matched email address; unprivileged users get results filtered
+	 * to BP friends only, with no email address in the response.
 	 *
-	 * @param \WP_REST_Request $request Incoming request.
+	 * Response shape (privileged):
+	 *   [{ "value": "jane@example.com", "userId": 5, "displayName": "Jane Smith",
+	 *      "userNicename": "jsmith" }, …]
+	 *
+	 * Response shape (unprivileged):
+	 *   [{ "value": "jsmith", "userId": 5, "displayName": "Jane Smith",
+	 *      "userNicename": "jsmith" }, …]
+	 *
+	 * @param \WP_REST_Request $request
 	 * @return \WP_REST_Response
 	 */
 	public function rest_suggest_members( \WP_REST_Request $request ): \WP_REST_Response {
-		$query = $request->get_param( 'query' );
+		$query         = $request->get_param( 'query' );
+		$match_by_email = current_user_can( 'cboxol_match_users_by_email_address' );
+
+		$search_columns = [ 'display_name', 'user_nicename' ];
+		if ( $match_by_email ) {
+			$search_columns[] = 'user_email';
+		}
 
 		$users = get_users(
 			[
 				'search'         => '*' . $query . '*',
-				'search_columns' => [ 'display_name', 'user_email' ],
-				'number'         => 10,
-				'fields'         => [ 'ID', 'display_name', 'user_email' ],
+				'search_columns' => $search_columns,
+				'number'         => 20, // Fetch more to allow for friend filtering.
+				'fields'         => [ 'ID', 'display_name', 'user_nicename', 'user_email' ],
+				'exclude'        => [ get_current_user_id() ],
 			]
 		);
 
+		// Unprivileged: filter to BP friends of the current user.
+		if ( ! $match_by_email ) {
+			$users = $this->filter_to_friends( $users );
+		}
+
+		// Cap results after filtering.
+		$users = array_slice( $users, 0, 10 );
+
 		$suggestions = array_map(
-			static fn( $user ) => [
-				'value'       => $user->user_email,
-				'displayName' => $user->display_name,
-			],
+			static function ( $user ) use ( $match_by_email ) {
+				$item = [
+					'value'        => $match_by_email ? $user->user_email : $user->user_nicename,
+					'userId'       => $user->ID,
+					'displayName'  => $user->display_name,
+					'userNicename' => $user->user_nicename,
+				];
+
+				if ( $match_by_email ) {
+					$item['email'] = $user->user_email;
+				}
+
+				return $item;
+			},
 			$users
 		);
 
 		return rest_ensure_response( array_values( $suggestions ) );
+	}
+
+	/**
+	 * REST callback: validate a single email address.
+	 *
+	 * Looks up the corresponding WP user and applies privacy rules:
+	 *
+	 * Privileged: returns full user data including email if the user exists.
+	 * Unprivileged: returns user data (no email) only if the user is a BP friend
+	 *   of the current user; returns {found: false} otherwise (including when the
+	 *   user exists but is not a friend, to avoid leaking account existence).
+	 *
+	 * Response (found, privileged):
+	 *   { "found": true, "userId": 5, "displayName": "Jane", "userNicename": "jsmith",
+	 *     "email": "jane@example.com" }
+	 *
+	 * Response (found, unprivileged friend):
+	 *   { "found": true, "userId": 5, "displayName": "Jane", "userNicename": "jsmith" }
+	 *
+	 * Response (not found / not accessible):
+	 *   { "found": false }
+	 *
+	 * @param \WP_REST_Request $request
+	 * @return \WP_REST_Response
+	 */
+	public function rest_validate_address( \WP_REST_Request $request ): \WP_REST_Response {
+		$email          = $request->get_param( 'email' );
+		$match_by_email = current_user_can( 'cboxol_match_users_by_email_address' );
+
+		$user = get_user_by( 'email', $email );
+
+		if ( ! $user ) {
+			return rest_ensure_response( [ 'found' => false ] );
+		}
+
+		// Unprivileged: only expose users who are BP friends; don't leak the
+		// existence of other users' accounts.
+		if ( ! $match_by_email ) {
+			if ( ! $this->is_bp_friend( $user->ID ) ) {
+				return rest_ensure_response( [ 'found' => false ] );
+			}
+
+			return rest_ensure_response(
+				[
+					'found'        => true,
+					'userId'       => $user->ID,
+					'displayName'  => $user->display_name,
+					'userNicename' => $user->user_nicename,
+					// No email — unprivileged users must not learn the email address.
+				]
+			);
+		}
+
+		return rest_ensure_response(
+			[
+				'found'        => true,
+				'userId'       => $user->ID,
+				'displayName'  => $user->display_name,
+				'userNicename' => $user->user_nicename,
+				'email'        => $user->user_email,
+			]
+		);
+	}
+
+	/**
+	 * Filters an array of user objects to those who are BP friends of the
+	 * current user.
+	 *
+	 * Falls back to returning all users if the BP Friends component is not active.
+	 *
+	 * @param object[] $users
+	 * @return object[]
+	 */
+	private function filter_to_friends( array $users ): array {
+		if ( ! function_exists( 'friends_get_friend_user_ids' ) ) {
+			return $users;
+		}
+
+		$friend_ids = friends_get_friend_user_ids( get_current_user_id() );
+
+		if ( empty( $friend_ids ) ) {
+			return [];
+		}
+
+		return array_values(
+			array_filter( $users, static fn( $u ) => in_array( (int) $u->ID, array_map( 'intval', $friend_ids ), true ) )
+		);
+	}
+
+	/**
+	 * Checks whether a user is a BP friend of the current user.
+	 *
+	 * Returns true if the BP Friends component is not active (graceful fallback).
+	 *
+	 * @param int $user_id
+	 * @return bool
+	 */
+	private function is_bp_friend( int $user_id ): bool {
+		if ( ! function_exists( 'friends_check_friendship' ) ) {
+			return true;
+		}
+		return friends_check_friendship( get_current_user_id(), $user_id );
 	}
 }

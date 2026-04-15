@@ -22,19 +22,20 @@ document.addEventListener( 'DOMContentLoaded', () => {
 	}
 
 	const {
-		restEndpoint   = '',
-		nonce          = '',
-		allowedDomains = [],
+		restEndpoint      = '',
+		validateEndpoint  = '',
+		nonce             = '',
+		allowedDomains    = [],
+		matchByEmail      = false,
 	} = window.cboxolGroupInvitations || {};
 
 	const emailTagInput = new EmailTagInput( inputEl, {
-		endpoint: restEndpoint,
+		endpoint:         restEndpoint,
+		validateEndpoint,
 		nonce,
+		matchByEmail,
 	} );
 
-	// Register the domain whitelist validator if restrictions are configured.
-	// The factory is a no-op when allowedDomains is empty, but we skip it
-	// entirely here to avoid the (negligible) closure overhead on open sites.
 	if ( allowedDomains.length ) {
 		emailTagInput.addValidator( createDomainValidator( allowedDomains ) );
 	}

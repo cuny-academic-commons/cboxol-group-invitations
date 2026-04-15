@@ -139,8 +139,9 @@ $form_action = bp_get_group_url(
 				/>
 			</div>
 
-			<?php // Hidden input carries the serialised address list on form submit. ?>
-			<input type="hidden" name="email-addresses-to-import" id="email-addresses-to-import-data" />
+			<?php // Hidden inputs carry resolved user IDs and unresolved emails on form submit. ?>
+			<input type="hidden" name="invite-user-ids" id="invite-user-ids-data" />
+			<input type="hidden" name="invite-emails"   id="invite-emails-data" />
 
 			<p><input type="submit" class="btn btn-primary no-deco" value="<?php esc_attr_e( 'Import', 'commons-in-a-box' ); ?>" /></p>
 		<?php endif; ?>
