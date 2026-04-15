@@ -30,6 +30,14 @@
 		<exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
 	</rule>
 
+	<rule ref="WordPress.WP.Capabilities">
+		<properties>
+			<property name="custom_capabilities" type="array">
+				<element value="cboxol_match_users_by_email_address" />
+			</property>
+		</properties>
+	</rule>
+
 	<!-- Require Yoda conditions per WP style. -->
 	<rule ref="WordPress.PHP.YodaConditions"/>
 
