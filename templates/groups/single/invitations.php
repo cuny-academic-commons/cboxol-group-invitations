@@ -18,7 +18,7 @@ $form_action = bp_get_group_url(
 <form method="post" id="import-members-form" class="form-panel" action="<?php echo esc_url( $form_action ); ?>">
 
 <div id="topgroupinvite" class="panel panel-default">
-	<div class="panel-heading semibold"><?php esc_html_e( 'Invite New Members', 'cboxol-group-invitations' ); ?></div>
+	<div class="panel-heading semibold"><?php esc_html_e( 'Invite New Members', 'commons-in-a-box' ); ?></div>
 	<div class="panel-body">
 
 		<?php do_action( 'template_notices' ); ?>
@@ -130,12 +130,12 @@ $form_action = bp_get_group_url(
 
 			<p class="invite-copy import-acknowledge"><label><input type="checkbox" name="import-acknowledge-checkbox" id="import-acknowledge-checkbox" value="1" /> <?php esc_html_e( 'I acknowledge that the following individuals are officially associated with this group or have approved this action.', 'commons-in-a-box' ); ?></label></p>
 
-			<label class="sr-only" for="email-tag-input"><?php esc_html_e( 'Enter email addresses', 'cboxol-group-invitations' ); ?></label>
+			<label class="sr-only" for="email-tag-input"><?php esc_html_e( 'Enter email addresses', 'commons-in-a-box' ); ?></label>
 			<div class="cboxol-gi-field-wrapper">
 				<input
 					type="text"
 					id="email-tag-input"
-					placeholder="<?php esc_attr_e( 'Type a name or email address, or paste a comma-separated list…', 'cboxol-group-invitations' ); ?>"
+					placeholder="<?php esc_attr_e( 'Type a name or email address, or paste a comma-separated list…', 'commons-in-a-box' ); ?>"
 				/>
 			</div>
 

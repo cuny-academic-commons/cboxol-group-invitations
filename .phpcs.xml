@@ -22,7 +22,7 @@
 	<rule ref="WordPress">
 		<!-- Namespace declaration is a single, long line — allow it. -->
 		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
-		
+
 		<!-- Allow PSR-4 autoloading. -->
 		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
 
@@ -39,7 +39,7 @@
 	<!-- Set text-domain. -->
 	<rule ref="WordPress.WP.I18n">
 		<properties>
-			<property name="text_domain" type="array" value="cboxol-group-invitations"/>
+			<property name="text_domain" value="commons-in-a-box"/>
 		</properties>
 	</rule>
 
