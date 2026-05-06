@@ -5,15 +5,49 @@
  * @package CBOX\OL\GroupInvitations
  */
 
-$group_type = cboxol_get_group_group_type( bp_get_current_group_id() );
+$group_id = bp_get_current_group_id();
 
-// @todo Probably change this to my own form handler.
+$import_results = \CBOX\OL\GroupInvitations\App::get_current_import_results();
+$can_direct_add = \CBOX\OL\GroupInvitations\App::current_user_can_direct_add_members( $group_id, bp_loggedin_user_id() );
+
+$build_user_result_items = static function ( array $emails ): array {
+	$user_links = [];
+
+	foreach ( $emails as $email ) {
+		$user = get_user_by( 'email', $email );
+		if ( ! $user ) {
+			continue;
+		}
+
+		$display_name = bp_core_get_user_displayname( $user->ID );
+		if ( ! is_string( $display_name ) || '' === $display_name ) {
+			$display_name = $email;
+		}
+
+		$user_links[] = sprintf(
+			'<li><a href="%s">%s</a> (%s)</li>',
+			esc_attr( bp_core_get_user_domain( $user->ID ) ),
+			esc_html( $display_name ),
+			esc_html( $email )
+		);
+	}
+
+	return $user_links;
+};
+
+$build_text_result_items = static function ( array $items ): array {
+	return array_map(
+		static function ( string $item ): string {
+			return sprintf( '<li>%s</li>', esc_html( $item ) );
+		},
+		$items
+	);
+};
+
 $form_action = bp_get_group_url(
 	groups_get_current_group(),
-	bp_groups_get_path_chunks( [ 'invite-anyone', 'send' ] )
+	bp_groups_get_path_chunks( [ 'invitations', 'send' ] )
 );
-
-$invite_anyone_slug = defined( 'BP_INVITE_ANYONE_SLUG' ) ? BP_INVITE_ANYONE_SLUG : 'invite-anyone';
 
 ?>
 
@@ -25,115 +59,173 @@ $invite_anyone_slug = defined( 'BP_INVITE_ANYONE_SLUG' ) ? BP_INVITE_ANYONE_SLUG
 
 		<?php do_action( 'template_notices' ); ?>
 
-		<?php $show_submit_border = false; ?>
-
 		<?php if ( ! empty( $import_results ) ) : ?>
-			<?php if ( ! empty( $import_results['success'] ) ) : ?>
-				<?php
-				$user_links = [];
-				foreach ( $import_results['success'] as $success_email ) {
-					$success_user = get_user_by( 'email', $success_email );
-					if ( ! $success_user ) {
-						continue;
-					}
-
-					$display_name = bp_core_get_user_displayname( $success_user->ID );
-					if ( ! is_string( $display_name ) || '' === $display_name ) {
-						$display_name = $success_email;
-					}
-
-					$user_links[] = sprintf(
-						'<li><a href="%s">%s</a> (%s)</li>',
-						esc_attr( bp_core_get_user_domain( $success_user->ID ) ),
-						esc_html( $display_name ),
-						esc_html( $success_email )
-					);
-				}
-				?>
-
-				<?php if ( $user_links ) : ?>
-					<div class="import-results-section import-results-section-success">
-						<p class="invite-copy">
-							<?php esc_html_e( 'The following OpenLab members were successfully added.', 'commons-in-a-box' ); ?>
-							<?php /* phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped */ ?>
-							<ul><?php echo implode( '', $user_links ); ?></ul>
-						</p>
-					</div>
-				<?php endif; ?>
-			<?php endif; ?>
-
-			<?php if ( ! empty( $import_results['illegal_address'] ) ) : ?>
-				<?php $show_submit_border = true; ?>
-				<div class="import-results-section import-results-section-illegal">
-					<p class="invite-copy"><?php esc_html_e( 'The following email addresses are not valid for this community.', 'commons-in-a-box' ); ?></p>
-
-					<label for="illegal-addresses" class="sr-only"><?php esc_html_e( 'Illegal addresses', 'commons-in-a-box' ); ?></label>
-					<textarea name="illegal-addresses" class="form-control" id="illegal-addresses"><?php echo esc_textarea( implode( ', ', $import_results['illegal_address'] ) ); ?></textarea>
-				</div>
-			<?php endif; ?>
-
-			<?php if ( ! empty( $import_results['invalid_address'] ) ) : ?>
-				<?php
-				$invalid = [];
-				foreach ( $import_results['invalid_address'] as $invalid_address ) {
-					$invalid[] = sprintf(
-						'<strong>%s</strong>',
-						esc_html( $invalid_address )
-					);
-				}
-				?>
-
-				<?php if ( $invalid ) : ?>
-					<?php $show_submit_border = true; ?>
-					<div class="import-results-section import-results-section-invalid">
-						<p class="invite-copy"><?php esc_html_e( 'The following don\'t appear to be valid email addresses. Please verify and resubmit.', 'commons-in-a-box' ); ?></p>
-						<?php /* phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped */ ?>
-						<p class="invite-copy"><?php echo implode( ', ', $invalid ); ?></p>
-					</div>
-				<?php endif; ?>
-			<?php endif; ?>
-
-			<?php if ( ! empty( $import_results['not_found'] ) ) : ?>
-				<?php $show_submit_border = true; ?>
-				<div class="import-results-section import-results-section-not-found">
-					<p class="invite-copy"><?php esc_html_e( 'The following email addresses are valid, but no corresponding community members were found. The link below wil take you to My Invitations > Invite New Members, where you may invite the following to join the community and this group.', 'commons-in-a-box' ); ?></p>
-
-					<?php
-					$invite_link = bp_members_get_user_url(
-						bp_loggedin_user_id(),
-						bp_members_get_path_chunks( [ $invite_anyone_slug ] )
-					);
-					$invite_link = add_query_arg(
-						[
-							'emails'   => $import_results['not_found'],
-							'group_id' => bp_get_current_group_id(),
-						],
-						$invite_link
-					);
-					?>
-
-					<p class="invite-new-members-link"><span class="fa fa-chevron-circle-right" aria-hidden="true"></span> <a href="<?php echo esc_attr( $invite_link ); ?>"><?php esc_html_e( 'Invite the following to join the community', 'commons-in-a-box' ); ?></a></p>
-
-					<label for="not-found-addresses" class="sr-only"><?php esc_html_e( 'Addresses not found in the system', 'commons-in-a-box' ); ?></label>
-					<textarea name="not-found-addresses" class="form-control" id="not-found-addresses"><?php echo esc_textarea( implode( ', ', $import_results['not_found'] ) ); ?></textarea>
-				</div>
-			<?php endif; ?>
-
 			<?php
-			$submit_border_class    = $show_submit_border ? ' import-results-section-submit-show-border' : '';
+			$submitted_values       = $import_results['submitted'] ?? [];
+			$success_count          = count( $import_results['added'] ?? [] ) + count( $import_results['invited'] ?? [] ) + count( $import_results['emailed'] ?? [] );
 			$group_invite_permalink = bp_get_group_url(
 				groups_get_current_group(),
-				bp_groups_get_path_chunks( [ $invite_anyone_slug ] )
+				bp_groups_get_path_chunks( [ 'invitations' ] )
 			);
 			?>
 
-			<div class="import-results-section import-results-section-submit <?php echo esc_attr( $submit_border_class ); ?>">
+			<div class="bp-template-notice updated cboxol-gi-results-notice">
+				<p>
+					<?php esc_html_e( 'Your submission was processed.', 'commons-in-a-box' ); ?>
+				</p>
+
+				<?php if ( $submitted_values ) : ?>
+					<h3 class="cboxol-gi-results__heading cboxol-gi-results__heading--notice"><?php esc_html_e( 'Submitted values', 'commons-in-a-box' ); ?></h3>
+					<div class="cboxol-gi-scrollbox">
+						<ul class="cboxol-gi-result-values">
+							<?php foreach ( $submitted_values as $submitted_value ) : ?>
+								<li><?php echo esc_html( $submitted_value ); ?></li>
+							<?php endforeach; ?>
+						</ul>
+					</div>
+				<?php endif; ?>
+			</div>
+
+			<div class="cboxol-gi-results">
+				<h3 class="cboxol-gi-results__heading"><?php esc_html_e( 'Results', 'commons-in-a-box' ); ?></h3>
+
+				<ol class="cboxol-gi-results__list">
+					<?php if ( ! empty( $import_results['added'] ) ) : ?>
+						<?php $added_items = $build_user_result_items( $import_results['added'] ); ?>
+						<?php if ( $added_items ) : ?>
+							<li class="cboxol-gi-results__item">
+								<h4 class="cboxol-gi-results__item-title"><?php esc_html_e( 'Added directly', 'commons-in-a-box' ); ?></h4>
+								<p class="invite-copy"><?php esc_html_e( 'The following OpenLab members were added directly to the group.', 'commons-in-a-box' ); ?></p>
+								<div class="cboxol-gi-scrollbox">
+									<ul class="cboxol-gi-result-values">
+										<?php /* phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped */ ?>
+										<?php echo implode( '', $added_items ); ?>
+									</ul>
+								</div>
+							</li>
+						<?php endif; ?>
+					<?php endif; ?>
+
+					<?php if ( ! empty( $import_results['invited'] ) ) : ?>
+						<?php $invited_items = $build_user_result_items( $import_results['invited'] ); ?>
+						<?php if ( $invited_items ) : ?>
+							<li class="cboxol-gi-results__item">
+								<h4 class="cboxol-gi-results__item-title"><?php esc_html_e( 'Existing users', 'commons-in-a-box' ); ?></h4>
+								<p class="invite-copy"><?php esc_html_e( 'The following email addresses matched users who are already members of the community. Group invitations have been sent to these members.', 'commons-in-a-box' ); ?></p>
+								<div class="cboxol-gi-scrollbox">
+									<ul class="cboxol-gi-result-values">
+										<?php /* phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped */ ?>
+										<?php echo implode( '', $invited_items ); ?>
+									</ul>
+								</div>
+							</li>
+						<?php endif; ?>
+					<?php endif; ?>
+
+					<?php if ( ! empty( $import_results['emailed'] ) ) : ?>
+						<li class="cboxol-gi-results__item">
+							<h4 class="cboxol-gi-results__item-title"><?php esc_html_e( 'New user Invitations', 'commons-in-a-box' ); ?></h4>
+							<p class="invite-copy"><?php esc_html_e( 'The following email addresses were not found in the system. Invitations to join the site have been sent to these addresses. After accepting the invitation, users will be added to the group.', 'commons-in-a-box' ); ?></p>
+							<div class="cboxol-gi-scrollbox">
+								<ul class="cboxol-gi-result-values">
+									<?php /* phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped */ ?>
+									<?php echo implode( '', $build_text_result_items( $import_results['emailed'] ) ); ?>
+								</ul>
+							</div>
+						</li>
+					<?php endif; ?>
+
+					<?php if ( ! empty( $import_results['already_member'] ) ) : ?>
+						<li class="cboxol-gi-results__item">
+							<h4 class="cboxol-gi-results__item-title"><?php esc_html_e( 'Already in the group', 'commons-in-a-box' ); ?></h4>
+							<p class="invite-copy"><?php esc_html_e( 'The following invited users are already members of the group.', 'commons-in-a-box' ); ?></p>
+							<div class="cboxol-gi-scrollbox">
+								<ul class="cboxol-gi-result-values">
+									<?php /* phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped */ ?>
+									<?php echo implode( '', $build_text_result_items( $import_results['already_member'] ) ); ?>
+								</ul>
+							</div>
+						</li>
+					<?php endif; ?>
+
+					<?php if ( ! empty( $import_results['already_invited'] ) ) : ?>
+						<li class="cboxol-gi-results__item">
+							<h4 class="cboxol-gi-results__item-title"><?php esc_html_e( 'Already invited', 'commons-in-a-box' ); ?></h4>
+							<p class="invite-copy"><?php esc_html_e( 'The following users have already received invitations to join the group.', 'commons-in-a-box' ); ?></p>
+							<div class="cboxol-gi-scrollbox">
+								<ul class="cboxol-gi-result-values">
+									<?php /* phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped */ ?>
+									<?php echo implode( '', $build_text_result_items( $import_results['already_invited'] ) ); ?>
+								</ul>
+							</div>
+						</li>
+					<?php endif; ?>
+
+					<?php if ( ! empty( $import_results['illegal_address'] ) ) : ?>
+						<li class="cboxol-gi-results__item">
+							<h4 class="cboxol-gi-results__item-title"><?php esc_html_e( 'Not permitted for this community', 'commons-in-a-box' ); ?></h4>
+							<p class="invite-copy"><?php esc_html_e( 'The following email addresses are not valid for this community.', 'commons-in-a-box' ); ?></p>
+							<div class="cboxol-gi-scrollbox">
+								<ul class="cboxol-gi-result-values">
+									<?php /* phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped */ ?>
+									<?php echo implode( '', $build_text_result_items( $import_results['illegal_address'] ) ); ?>
+								</ul>
+							</div>
+						</li>
+					<?php endif; ?>
+
+					<?php if ( ! empty( $import_results['invalid_address'] ) ) : ?>
+						<li class="cboxol-gi-results__item">
+							<h4 class="cboxol-gi-results__item-title"><?php esc_html_e( 'Invalid email addresses', 'commons-in-a-box' ); ?></h4>
+							<p class="invite-copy"><?php esc_html_e( 'The following don\'t appear to be valid email addresses. Please verify and resubmit.', 'commons-in-a-box' ); ?></p>
+							<div class="cboxol-gi-scrollbox">
+								<ul class="cboxol-gi-result-values">
+									<?php /* phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped */ ?>
+									<?php echo implode( '', $build_text_result_items( $import_results['invalid_address'] ) ); ?>
+								</ul>
+							</div>
+						</li>
+					<?php endif; ?>
+
+					<?php if ( ! empty( $import_results['inaccessible_user'] ) ) : ?>
+						<li class="cboxol-gi-results__item">
+							<h4 class="cboxol-gi-results__item-title"><?php esc_html_e( 'Not available with your permissions', 'commons-in-a-box' ); ?></h4>
+							<p class="invite-copy"><?php esc_html_e( 'The following addresses could not be processed with your current invitation permissions.', 'commons-in-a-box' ); ?></p>
+							<div class="cboxol-gi-scrollbox">
+								<ul class="cboxol-gi-result-values">
+									<?php /* phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped */ ?>
+									<?php echo implode( '', $build_text_result_items( $import_results['inaccessible_user'] ) ); ?>
+								</ul>
+							</div>
+						</li>
+					<?php endif; ?>
+
+					<?php if ( ! empty( $import_results['failed'] ) ) : ?>
+						<li class="cboxol-gi-results__item">
+							<h4 class="cboxol-gi-results__item-title"><?php esc_html_e( 'Processing failures', 'commons-in-a-box' ); ?></h4>
+							<p class="invite-copy"><?php esc_html_e( 'The following addresses could not be processed because the invitation step failed.', 'commons-in-a-box' ); ?></p>
+							<div class="cboxol-gi-scrollbox">
+								<ul class="cboxol-gi-result-values">
+									<?php /* phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped */ ?>
+									<?php echo implode( '', $build_text_result_items( $import_results['failed'] ) ); ?>
+								</ul>
+							</div>
+						</li>
+					<?php endif; ?>
+				</ol>
+			</div>
+
+			<div class="import-results-section import-results-section-submit import-results-section-submit-show-border">
 				<p><a class="btn btn-primary no-deco" href="<?php echo esc_attr( $group_invite_permalink ); ?>"><?php esc_html_e( 'Perform a new import', 'commons-in-a-box' ); ?></a></p>
 			</div>
 
 		<?php else : ?>
 
-			<p class="invite-copy"><?php esc_html_e( 'Add community members to this group in bulk by entering a list of email addresses below. Existing community members corresponding to this list will be added automatically to the group and will receive notification via email.', 'commons-in-a-box' ); ?></p>
+			<?php if ( $can_direct_add ) : ?>
+				<p class="invite-copy"><?php esc_html_e( 'Add community members to this group in bulk by entering a list of email addresses below. Matching OpenLab members will be added directly to the group, and Invite Anyone invitations will be created for valid email addresses that do not yet belong to an account.', 'commons-in-a-box' ); ?></p>
+			<?php else : ?>
+				<p class="invite-copy"><?php esc_html_e( 'Invite people to this group in bulk by entering a list of email addresses below. Matching OpenLab members will receive group invitations, and Invite Anyone invitations will be created for valid email addresses that do not yet belong to an account.', 'commons-in-a-box' ); ?></p>
+			<?php endif; ?>
 
 			<p class="invite-copy import-acknowledge"><label><input type="checkbox" name="import-acknowledge-checkbox" id="import-acknowledge-checkbox" value="1" /> <?php esc_html_e( 'I acknowledge that the following individuals are officially associated with this group or have approved this action.', 'commons-in-a-box' ); ?></label></p>
 
@@ -158,9 +250,10 @@ $invite_anyone_slug = defined( 'BP_INVITE_ANYONE_SLUG' ) ? BP_INVITE_ANYONE_SLUG
 	</div>
 </div>
 
-<!-- Don't leave out this sweet field -->
 <?php if ( ! bp_get_new_group_id() ) : ?>
 	<input type="hidden" name="group_id" id="group_id" value="<?php bp_group_id(); ?>" />
 <?php else : ?>
 	<input type="hidden" name="group_id" id="group_id" value="<?php bp_new_group_id(); ?>" />
 <?php endif; ?>
+
+</form>

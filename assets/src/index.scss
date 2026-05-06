@@ -142,3 +142,60 @@
 .cboxol-gi-field-wrapper {
 	margin-bottom: 0.75rem;
 }
+
+// ---------------------------------------------------------------------------
+// Results UI
+// ---------------------------------------------------------------------------
+
+.cboxol-gi-results-notice {
+	margin-bottom: 1.5rem;
+}
+
+.cboxol-gi-results {
+	margin-bottom: 1.5rem;
+
+	&__heading {
+		margin: 0 0 0.75em;
+		font-size: 1.125em;
+		font-weight: 600;
+
+		&--notice {
+			margin-top: 1em;
+			font-size: 1em;
+		}
+	}
+
+	&__list {
+		margin: 0;
+		padding-left: 1.35em;
+	}
+
+	&__item {
+		margin-bottom: 1.25em;
+		padding-left: 0.25em;
+	}
+
+	&__item-title {
+		margin: 0 0 0.35em;
+		font-size: 1em;
+		font-weight: 600;
+	}
+}
+
+.cboxol-gi-scrollbox {
+	max-height: 10rem;
+	overflow-y: auto;
+	padding: 0.75rem 1rem;
+	border: 1px solid #d9d9d9;
+	border-radius: 4px;
+	background: #fff;
+}
+
+.cboxol-gi-result-values {
+	margin: 0;
+	padding-left: 1.2em;
+
+	li + li {
+		margin-top: 0.35em;
+	}
+}
