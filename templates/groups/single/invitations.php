@@ -71,7 +71,7 @@ $form_action = bp_get_group_url(
 
 			<div class="bp-template-notice updated cboxol-gi-results-notice">
 				<p>
-					<?php esc_html_e( 'Your submission was processed.', 'commons-in-a-box' ); ?>
+					<?php esc_html_e( 'Your submission was processed. Detailed results are below.', 'commons-in-a-box' ); ?>
 				</p>
 
 				<?php if ( $submitted_values ) : ?>
