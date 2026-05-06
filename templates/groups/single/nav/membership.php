@@ -26,7 +26,7 @@ $current_tab = bp_action_variable( 0 );
 <?php endif; ?>
 
 <?php if ( bp_group_is_member() && invite_anyone_access_test() && openlab_is_admin_truly_member() ) : ?>
-	<li class="<?php echo bp_is_current_action( 'invitations' ) ? 'current-menu-item' : ''; ?>"><a href="<?php echo esc_attr( bp_get_group_url( $group, bp_groups_get_path_chunks( [ 'invitations' ] ) ) ); ?>"><?php esc_html_e( 'Invite New Members', 'commons-in-a-box' ); ?></a></li>
+	<li class="<?php echo bp_is_current_action( 'invitations' ) ? 'current-menu-item' : ''; ?>"><a href="<?php echo esc_attr( bp_get_group_url( $group, bp_groups_get_path_chunks( [ 'invitations', 'invite-new-members' ] ) ) ); ?>"><?php esc_html_e( 'Invite New Members', 'commons-in-a-box' ); ?></a></li>
 <?php endif; ?>
 
 <?php if ( bp_is_item_admin() ) : ?>

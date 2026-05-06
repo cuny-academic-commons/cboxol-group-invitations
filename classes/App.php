@@ -64,6 +64,9 @@ class App {
 		// Apply 'current-menu-item' class when the Invitations tab is active.
 		add_filter( 'bp_get_options_nav_invitations', [ $this, 'filter_invitations_nav' ] );
 
+		// Render the Invite New Members / Sent Invitations sub-nav tabs.
+		add_action( 'bp_group_plugin_options_nav', [ $this, 'render_invitations_options_nav' ] );
+
 		// Ensure the 'Membership' tab is highlighted when on the Invitations page.
 		add_filter( 'bp_get_options_nav_members', [ $this, 'filter_members_nav_current' ], 20 );
 
@@ -131,11 +134,34 @@ class App {
 	/**
 	 * Screen function for the Invitations group tab.
 	 *
-	 * Tells BuddyPress which template to load when the tab is active.
+	 * Dispatches to the correct sub-panel based on the first action variable,
+	 * or redirects to the default panel when no sub-action is present.
 	 *
 	 * @return void
 	 */
 	public function render_invitations_screen(): void {
+		$sub_action = bp_action_variable( 0 );
+
+		if ( ! $sub_action ) {
+			bp_core_redirect(
+				bp_get_group_url(
+					groups_get_current_group(),
+					bp_groups_get_path_chunks( [ 'invitations', 'invite-new-members' ] )
+				)
+			);
+			return;
+		}
+
+		if ( ! in_array( $sub_action, [ 'invite-new-members', 'sent-invitations' ], true ) ) {
+			bp_core_redirect(
+				bp_get_group_url(
+					groups_get_current_group(),
+					bp_groups_get_path_chunks( [ 'invitations', 'invite-new-members' ] )
+				)
+			);
+			return;
+		}
+
 		add_action( 'bp_template_content', [ $this, 'render_invitations_template' ] );
 		bp_core_load_template( [ 'groups/single/plugins' ] );
 	}
@@ -149,6 +175,40 @@ class App {
 	 */
 	public function render_invitations_template(): void {
 		bp_get_template_part( 'groups/single/invitations' );
+	}
+
+	/**
+	 * Renders the sub-nav tabs for the Invitations section.
+	 *
+	 * Hooked onto bp_group_plugin_options_nav, which themes call inside a
+	 * <ul class="nav nav-inline"> when no component-specific nav is present.
+	 * Returns early if the current action is not 'invitations'.
+	 *
+	 * @return void
+	 */
+	public function render_invitations_options_nav(): void {
+		if ( ! bp_is_current_action( 'invitations' ) ) {
+			return;
+		}
+
+		$group      = groups_get_current_group();
+		$sub_action = bp_action_variable( 0 );
+
+		$tabs = [
+			'invite-new-members' => __( 'Invite New Members', 'cboxol-group-invitations' ),
+			'sent-invitations'   => __( 'Sent Invitations', 'cboxol-group-invitations' ),
+		];
+
+		foreach ( $tabs as $slug => $label ) {
+			$url   = bp_get_group_url( $group, bp_groups_get_path_chunks( [ 'invitations', $slug ] ) );
+			$class = ( $slug === $sub_action ) ? ' class="current-menu-item"' : '';
+			printf(
+				'<li%s><a href="%s">%s</a></li>',
+				$class, // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				esc_url( $url ),
+				esc_html( $label )
+			);
+		}
 	}
 
 	/**
@@ -710,13 +770,13 @@ class App {
 	}
 
 	/**
-	 * Returns the URL for the current group's Invitations screen.
+	 * Returns the URL for the current group's Invite New Members screen.
 	 *
 	 * @param int $group_id Group ID.
 	 * @return string
 	 */
 	private function get_invitations_url( int $group_id ): string {
-		return bp_get_group_url( groups_get_group( $group_id ), bp_groups_get_path_chunks( [ 'invitations' ] ) );
+		return bp_get_group_url( groups_get_group( $group_id ), bp_groups_get_path_chunks( [ 'invitations', 'invite-new-members' ] ) );
 	}
 
 	/**
