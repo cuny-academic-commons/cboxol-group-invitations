@@ -78,7 +78,7 @@ class App {
 
 		// Allow the cboxol_match_users_by_email_address capability to be granted via
 		// filters or role assignments without requiring a hard-coded role check here.
-		add_filter( 'map_meta_cap', [ $this, 'map_meta_cap' ], 10, 2 );
+		add_filter( 'map_meta_cap', [ $this, 'map_meta_cap' ], 10, 3 );
 	}
 
 	/**
@@ -534,15 +534,27 @@ class App {
 	 * Allows the cboxol_match_users_by_email_address capability to be mapped
 	 * (e.g. granted to specific roles via a filter added elsewhere).
 	 *
+	 * The cap is granted automatically when the user's member type allows
+	 * importing group users (get_can_import_group_users()), mirroring the
+	 * user-level portion of openlab_user_can_bulk_import_group_members() without
+	 * requiring a group context.
+	 *
 	 * By default the cap maps to itself, meaning only users/roles that have been
 	 * explicitly granted it (or filtered to have it) will pass the check.
 	 *
 	 * @param string[] $caps    Primitive caps required.
 	 * @param string   $cap     Meta cap being checked.
+	 * @param int      $user_id User ID performing the check.
 	 * @return string[]
 	 */
-	public function map_meta_cap( array $caps, string $cap ): array {
+	public function map_meta_cap( array $caps, string $cap, int $user_id ): array {
 		if ( 'cboxol_match_users_by_email_address' === $cap ) {
+			if ( function_exists( 'cboxol_get_user_member_type' ) ) {
+				$member_type = cboxol_get_user_member_type( $user_id );
+				if ( $member_type && ! is_wp_error( $member_type ) && $member_type->get_can_import_group_users() ) {
+					return [ 'exist' ];
+				}
+			}
 			return [ 'cboxol_match_users_by_email_address' ];
 		}
 		return $caps;
