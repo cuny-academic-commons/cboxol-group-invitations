@@ -220,12 +220,17 @@ $form_action = bp_get_group_url(
 			</div>
 
 		<?php else : ?>
+			<p class="invite-copy"><?php esc_html_e( 'Add community members to this group in bulk by entering a list of email addresses below', 'commons-in-a-box' ); ?></p>
 
-			<?php if ( $can_direct_add ) : ?>
-				<p class="invite-copy"><?php esc_html_e( 'Add community members to this group in bulk by entering a list of email addresses below. Matching OpenLab members will be added directly to the group, and Invite Anyone invitations will be created for valid email addresses that do not yet belong to an account.', 'commons-in-a-box' ); ?></p>
-			<?php else : ?>
-				<p class="invite-copy"><?php esc_html_e( 'Invite people to this group in bulk by entering a list of email addresses below. Matching OpenLab members will receive group invitations, and Invite Anyone invitations will be created for valid email addresses that do not yet belong to an account.', 'commons-in-a-box' ); ?></p>
-			<?php endif; ?>
+			<ul>
+				<?php if ( $can_direct_add ) : ?>
+					<li><?php esc_html_e( 'If an email address matches an existing member, the member will be added directly to this group.', 'commons-in-a-box' ); ?></li>
+					<li><?php esc_html_e( 'If no account exists for an email address, an invitation will be sent to that address with instructions to join the site and the group.', 'commons-in-a-box' ); ?></li>
+				<?php else : ?>
+					<li><?php esc_html_e( 'If an email address matches an existing member, that member will receive an invitation to join this group.', 'commons-in-a-box' ); ?></li>
+					<li><?php esc_html_e( 'If no account exists for an email address, an invitation will be sent to that address with instructions to join the site and the group.', 'commons-in-a-box' ); ?></li>
+				<?php endif; ?>
+			</ul>
 
 			<p class="invite-copy import-acknowledge"><label><input type="checkbox" name="import-acknowledge-checkbox" id="import-acknowledge-checkbox" value="1" /> <?php esc_html_e( 'I acknowledge that the following individuals are officially associated with this group or have approved this action.', 'commons-in-a-box' ); ?></label></p>
 
