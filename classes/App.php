@@ -936,9 +936,10 @@ class App {
 
 		if ( groups_invite_user(
 			[
-				'user_id'    => $user->ID,
-				'group_id'   => $group_id,
-				'inviter_id' => $inviter_id,
+				'user_id'     => $user->ID,
+				'group_id'    => $group_id,
+				'inviter_id'  => $inviter_id,
+				'send_invite' => true,
 			]
 		) ) {
 			$pending_invites[] = $email;
@@ -1143,7 +1144,7 @@ class App {
 			wp_mail( $to, $subject, $message );
 		}
 
-		$record_id = invite_anyone_record_invitation( $inviter_id, $email, $message, [ $group_id ], $subject, false );
+		$record_id = invite_anyone_record_invitation( $inviter_id, $email, $message, [ (string) $group_id ], $subject, false );
 		if ( ! $record_id ) {
 			return false;
 		}
