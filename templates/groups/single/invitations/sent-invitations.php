@@ -10,8 +10,10 @@ $user_id            = bp_loggedin_user_id();
 $can_match_by_email = current_user_can( 'cboxol_match_users_by_email_address' );
 
 // BP-native group invitations sent by the current user to this group.
-// Note: BuddyPress removes invitation records upon acceptance, so this list
-// reflects pending (not-yet-accepted) invitations only.
+// This includes both pending invitations (invite sent, not yet accepted) and
+// direct adds (privileged users who bypassed the invite email step). BuddyPress
+// removes invitation records upon acceptance, so accepted standard invitations
+// are not queryable here.
 $bp_invitations = [];
 if ( function_exists( 'groups_get_invites' ) ) {
 	$bp_invitations = groups_get_invites(
@@ -64,7 +66,7 @@ if ( class_exists( 'Invite_Anyone_Invitation' ) ) {
 	<div class="panel-heading semibold"><?php esc_html_e( 'Sent Invitations', 'cboxol-group-invitations' ); ?></div>
 	<div class="panel-body">
 
-		<p class="invite-copy"><?php esc_html_e( 'Below are the invitations to this group that you have sent. Group invitations are shown as pending until the invited member accepts or declines. Site invitations show the date the invitee joined when available.', 'cboxol-group-invitations' ); ?></p>
+		<p class="invite-copy"><?php esc_html_e( 'Below are the invitations to this group that you have sent, and members you have directly added. Standard group invitations are shown as pending until accepted or declined. Members added directly by privileged users are shown as added.', 'cboxol-group-invitations' ); ?></p>
 
 		<h3 class="cboxol-gi-section-heading"><?php esc_html_e( 'Group Invitations', 'cboxol-group-invitations' ); ?></h3>
 
@@ -78,7 +80,7 @@ if ( class_exists( 'Invite_Anyone_Invitation' ) ) {
 						<?php if ( $can_match_by_email ) : ?>
 							<th scope="col"><?php esc_html_e( 'Email', 'cboxol-group-invitations' ); ?></th>
 						<?php endif; ?>
-						<th scope="col"><?php esc_html_e( 'Date Sent', 'cboxol-group-invitations' ); ?></th>
+						<th scope="col"><?php esc_html_e( 'Date', 'cboxol-group-invitations' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'Status', 'cboxol-group-invitations' ); ?></th>
 					</tr>
 				</thead>
@@ -95,9 +97,13 @@ if ( class_exists( 'Invite_Anyone_Invitation' ) ) {
 							$display_name = $invitee_user->display_name;
 						}
 
-						$profile_url = bp_core_get_user_domain( $invite->user_id );
-						$username    = bp_core_get_username( $invite->user_id );
-						$date_sent   = date_i18n( get_option( 'date_format' ), strtotime( $invite->date_modified ) );
+						$profile_url   = bp_core_get_user_domain( $invite->user_id );
+						$username      = bp_core_get_username( $invite->user_id );
+						$date          = date_i18n( get_option( 'date_format' ), strtotime( $invite->date_modified ) );
+						$is_member     = groups_is_user_member( $invite->user_id, $group_id );
+						$invite_status = $is_member
+							? __( 'Added', 'cboxol-group-invitations' )
+							: __( 'Pending', 'cboxol-group-invitations' );
 						?>
 						<tr>
 							<td>
@@ -107,14 +113,14 @@ if ( class_exists( 'Invite_Anyone_Invitation' ) ) {
 							<?php if ( $can_match_by_email ) : ?>
 								<td><?php echo esc_html( $invitee_user->user_email ); ?></td>
 							<?php endif; ?>
-							<td><?php echo esc_html( $date_sent ); ?></td>
-							<td><?php esc_html_e( 'Pending', 'cboxol-group-invitations' ); ?></td>
+							<td><?php echo esc_html( $date ); ?></td>
+							<td><?php echo esc_html( $invite_status ); ?></td>
 						</tr>
 					<?php endforeach; ?>
 				</tbody>
 			</table>
 		<?php else : ?>
-			<p class="invite-copy"><?php esc_html_e( 'You have no pending group invitations for this group.', 'cboxol-group-invitations' ); ?></p>
+			<p class="invite-copy"><?php esc_html_e( 'You have no group invitations or direct additions for this group.', 'cboxol-group-invitations' ); ?></p>
 		<?php endif; ?>
 
 		<?php if ( class_exists( 'Invite_Anyone_Invitation' ) ) : ?>
