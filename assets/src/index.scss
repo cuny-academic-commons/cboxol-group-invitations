@@ -200,6 +200,11 @@
 	}
 }
 
+// Hide 'Invite New Members' top-level item.
+#invitations-groups-li {
+	display: none;
+}
+
 /** "Sent Invitations" panel *************************************************/
 
 .cboxol-gi-section-heading {

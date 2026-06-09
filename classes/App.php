@@ -121,7 +121,7 @@ class App {
 				'parent_url'      => $group_link,
 				'screen_function' => [ $this, 'render_invitations_screen' ],
 				'position'        => 71,
-				'user_has_access' => groups_is_user_admin( bp_loggedin_user_id(), $current_group_id ) || groups_is_user_mod( bp_loggedin_user_id(), $current_group_id ),
+				'user_has_access' => groups_is_user_member( bp_loggedin_user_id(), $current_group_id ),
 			]
 		);
 
@@ -194,19 +194,78 @@ class App {
 		$group      = groups_get_current_group();
 		$sub_action = bp_action_variable( 0 );
 
-		$tabs = [
-			'invite-new-members' => __( 'Invite New Members', 'cboxol-group-invitations' ),
-			'sent-invitations'   => __( 'Sent Invitations', 'cboxol-group-invitations' ),
+		$tabs = [];
+
+		if ( bp_is_item_admin() ) {
+			$tabs['manage-members'] = [
+				'label'      => __( 'Manage Members', 'cboxol-group-invitations' ),
+				'url'        => bp_get_group_manage_url( $group, bp_groups_get_path_chunks( [ 'manage-members' ], 'manage' ) ),
+				'is_current' => false,
+			];
+		} else {
+			$tabs['membership'] = [
+				'label'      => __( 'Membership', 'cboxol-group-invitations' ),
+				'url'        => bp_get_group_url( $group, bp_groups_get_path_chunks( [ 'members' ] ) ),
+				'is_current' => false,
+			];
+		}
+
+		if ( bp_is_item_admin() && 'private' === $group->status ) {
+			// Pending membership request count.
+			$membership_query = new \BP_Group_Member_Query(
+				[
+					'group_id'        => $group->id,
+					'is_confirmed'    => false,
+					'inviter_id'      => 0,
+					'populate_extras' => false,
+				]
+			);
+
+			$membership_indicator_class = count( $membership_query->results ) > 0 ? 'has-action-indicator' : '';
+
+			$tabs['membership-requests'] = [
+				'label'      => __( 'Membership Requests', 'cboxol-group-invitations' ),
+				'url'        => bp_get_group_manage_url( $group, bp_groups_get_path_chunks( [ 'membership-requests' ], 'manage' ) ),
+				'is_current' => false,
+				'a_class'    => $membership_indicator_class,
+			];
+		}
+
+		$tabs['invite-new-members'] = [
+			'label'      => __( 'Invite New Members', 'cboxol-group-invitations' ),
+			'url'        => bp_get_group_url( $group, bp_groups_get_path_chunks( [ 'invitations', 'invite-new-members' ] ) ),
+			'is_current' => 'invite-new-members' === $sub_action,
 		];
 
-		foreach ( $tabs as $slug => $label ) {
-			$url   = bp_get_group_url( $group, bp_groups_get_path_chunks( [ 'invitations', $slug ] ) );
-			$class = ( $slug === $sub_action ) ? ' class="current-menu-item"' : '';
+		$tabs['sent-invitations'] = [
+			'label'      => __( 'Sent Invitations', 'cboxol-group-invitations' ),
+			'url'        => bp_get_group_url( $group, bp_groups_get_path_chunks( [ 'invitations', 'sent-invitations' ] ) ),
+			'is_current' => 'sent-invitations' === $sub_action,
+		];
+
+		if ( bp_is_item_admin() ) {
+			$tabs['email-members'] = [
+				'label'      => __( 'Email Members', 'cboxol-group-invitations' ),
+				'url'        => bp_get_group_manage_url( $group, bp_groups_get_path_chunks( [ 'notifications' ], 'manage' ) ),
+				'is_current' => false,
+			];
+		}
+
+		$tabs['notifications'] = [
+			'label'      => __( 'Your Email Options', 'cboxol-group-invitations' ),
+			'url'        => bp_get_group_manage_url( $group, bp_groups_get_path_chunks( [ 'notifications' ], 'manage' ) ),
+			'is_current' => false,
+		];
+
+		foreach ( $tabs as $slug => $tab ) {
+			$class   = $tab['is_current'] ? 'current-menu-item' : '';
+			$a_class = isset( $tab['a_class'] ) ? $tab['a_class'] : '';
 			printf(
-				'<li%s><a href="%s">%s</a></li>',
-				$class, // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				esc_url( $url ),
-				esc_html( $label )
+				'<li class="%s"><a href="%s" class="%s">%s</a></li>',
+				esc_attr( $class ),
+				esc_url( $tab['url'] ),
+				esc_attr( $a_class ),
+				esc_html( $tab['label'] )
 			);
 		}
 	}
@@ -927,12 +986,47 @@ class App {
 		}
 
 		if ( $can_direct_add ) {
-			if ( groups_join_group( $group_id, $user->ID ) ) {
-				$this->send_added_to_group_email( $group_id, $email );
-				$results['added'][] = $email;
-			} else {
+			// Create a silent invite record before joining so that:
+			// (a) allow_invitation() passes (user is not yet a member), and
+			// (b) the add appears in the Sent Invitations panel.
+			// send_invite=false means no email or BP notification is dispatched.
+			$invite_created = (bool) groups_invite_user(
+				[
+					'user_id'     => $user->ID,
+					'group_id'    => $group_id,
+					'inviter_id'  => $inviter_id,
+					'send_invite' => false,
+				]
+			);
+
+			if ( ! groups_join_group( $group_id, $user->ID ) ) {
+				// Join failed. Remove the orphaned draft invite to avoid spurious
+				// notifications if groups_send_invites() is called later.
+				if ( $invite_created ) {
+					groups_delete_invite( $user->ID, $group_id, $inviter_id );
+				}
 				$results['failed'][] = $email;
+				return;
 			}
+
+			// Promote the draft to "sent" so the panel query (invite_sent=sent)
+			// picks it up, and so groups_send_invites() won't re-send it.
+			// If the promotion fails, delete the draft for the same reason.
+			if ( $invite_created && class_exists( 'BP_Invitation' ) ) {
+				$marked = \BP_Invitation::mark_sent_by_data(
+					[
+						'user_id'    => $user->ID,
+						'item_id'    => $group_id,
+						'inviter_id' => $inviter_id,
+					]
+				);
+				if ( ! $marked ) {
+					groups_delete_invite( $user->ID, $group_id, $inviter_id );
+				}
+			}
+
+			$this->send_added_to_group_email( $group_id, $email );
+			$results['added'][] = $email;
 			return;
 		}
 
