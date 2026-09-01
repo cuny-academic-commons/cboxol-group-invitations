@@ -222,17 +222,23 @@ $form_action = bp_get_group_url(
 		<?php else : ?>
 			<p class="invite-copy"><?php esc_html_e( 'Add community members to this group in bulk by entering a list of email addresses below', 'commons-in-a-box' ); ?></p>
 
-			<ul>
-				<?php if ( $can_direct_add ) : ?>
-					<li><?php esc_html_e( 'If an email address matches an existing member, the member will be added directly to this group.', 'commons-in-a-box' ); ?></li>
-					<li><?php esc_html_e( 'If no account exists for an email address, an invitation will be sent to that address with instructions to join the site and the group.', 'commons-in-a-box' ); ?></li>
-				<?php else : ?>
+			<?php if ( $can_direct_add ) : ?>
+				<p class="invite-copy"><?php esc_html_e( 'If no account exists for an email address, an invitation will be sent to that address with instructions to join the site and the group.', 'commons-in-a-box' ); ?></p>
+				<fieldset class="invite-copy import-existing-members-mode">
+					<legend><?php esc_html_e( 'If an email address matches an existing member, that member should:', 'commons-in-a-box' ); ?></legend>
+					<div class="import-existing-members-mode-options">
+						<p><label><input type="radio" name="import-existing-members-mode" value="invite" checked="checked" /> <?php esc_html_e( 'receive an invitation to join the group', 'commons-in-a-box' ); ?></label></p>
+						<p><label><input type="radio" name="import-existing-members-mode" id="import-existing-members-mode-direct-add" value="direct-add" aria-describedby="import-direct-add-acknowledgement" /> <?php esc_html_e( 'be added directly to the group', 'commons-in-a-box' ); ?></label></p>
+						<p class="import-acknowledge" id="import-direct-add-acknowledgement" hidden><?php esc_html_e( 'I acknowledge that the following individuals are officially associated with this group or have approved this action.', 'commons-in-a-box' ); ?></p>
+					</p>
+				</fieldset>
+			<?php else : ?>
+				<ul>
 					<li><?php esc_html_e( 'If an email address matches an existing member, that member will receive an invitation to join this group.', 'commons-in-a-box' ); ?></li>
 					<li><?php esc_html_e( 'If no account exists for an email address, an invitation will be sent to that address with instructions to join the site and the group.', 'commons-in-a-box' ); ?></li>
-				<?php endif; ?>
-			</ul>
-
-			<p class="invite-copy import-acknowledge"><label><input type="checkbox" name="import-acknowledge-checkbox" id="import-acknowledge-checkbox" value="1" /> <?php esc_html_e( 'I acknowledge that the following individuals are officially associated with this group or have approved this action.', 'commons-in-a-box' ); ?></label></p>
+				</ul>
+				<p class="invite-copy import-acknowledge"><label><input type="checkbox" name="import-acknowledge-checkbox" id="import-acknowledge-checkbox" value="1" /> <?php esc_html_e( 'I acknowledge that the following individuals are officially associated with this group or have approved this action.', 'commons-in-a-box' ); ?></label></p>
+			<?php endif; ?>
 
 			<label class="sr-only" for="email-tag-input"><?php esc_html_e( 'Enter email addresses', 'commons-in-a-box' ); ?></label>
 			<div class="cboxol-gi-field-wrapper">

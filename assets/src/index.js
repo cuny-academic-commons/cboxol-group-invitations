@@ -15,6 +15,34 @@ import EmailTagInput from './email-tag-input';
 import { createDomainValidator } from './validators';
 
 document.addEventListener( 'DOMContentLoaded', () => {
+	const directAddModeEl = document.getElementById(
+		'import-existing-members-mode-direct-add'
+	);
+	const directAddAcknowledgementEl = document.getElementById(
+		'import-direct-add-acknowledgement'
+	);
+	const importModeEls = document.querySelectorAll(
+		'input[name="import-existing-members-mode"]'
+	);
+
+	if (
+		directAddModeEl &&
+		directAddAcknowledgementEl &&
+		importModeEls.length
+	) {
+		const updateDirectAddAcknowledgement = () => {
+			directAddAcknowledgementEl.hidden = ! directAddModeEl.checked;
+		};
+
+		importModeEls.forEach( ( importModeEl ) =>
+			importModeEl.addEventListener(
+				'change',
+				updateDirectAddAcknowledgement
+			)
+		);
+		updateDirectAddAcknowledgement();
+	}
+
 	const inputEl = document.getElementById( 'email-tag-input' );
 
 	if ( ! inputEl ) {

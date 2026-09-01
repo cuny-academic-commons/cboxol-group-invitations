@@ -214,3 +214,26 @@
 table.cboxol-gi-sent-invitations-table {
 	width: 100%;
 }
+
+.form-panel .panel-body fieldset.import-existing-members-mode {
+	legend {
+		font-weight: normal;
+	}
+
+	.import-existing-members-mode-options {
+		margin: 0.5rem 0 1rem;
+		padding-left: 20px;
+
+		p {
+			margin-bottom: 0;
+
+			&.import-acknowledge {
+				font-style: italic;
+			}
+		}
+
+		label {
+			font-weight: normal;
+		}
+	}
+}

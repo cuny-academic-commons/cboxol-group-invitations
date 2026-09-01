@@ -360,11 +360,23 @@ class App {
 			bp_core_redirect( $this->get_invitations_url( $group_id ) );
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$is_acknowledged = isset( $_POST['import-acknowledge-checkbox'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['import-acknowledge-checkbox'] ) );
-		if ( ! $is_acknowledged ) {
-			bp_core_add_message( __( 'Please acknowledge the import statement before continuing.', 'cboxol-group-invitations' ), 'error' );
-			bp_core_redirect( $this->get_invitations_url( $group_id ) );
+		$can_direct_add = self::current_user_can_direct_add_members( $group_id, $user_id );
+		if ( $can_direct_add ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$import_mode = isset( $_POST['import-existing-members-mode'] ) ? sanitize_text_field( wp_unslash( $_POST['import-existing-members-mode'] ) ) : '';
+			if ( ! in_array( $import_mode, [ 'invite', 'direct-add' ], true ) ) {
+				bp_core_add_message( __( 'Please choose how existing members should be added.', 'cboxol-group-invitations' ), 'error' );
+				bp_core_redirect( $this->get_invitations_url( $group_id ) );
+			}
+
+			$can_direct_add = 'direct-add' === $import_mode;
+		} else {
+			// phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$is_acknowledged = isset( $_POST['import-acknowledge-checkbox'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['import-acknowledge-checkbox'] ) );
+			if ( ! $is_acknowledged ) {
+				bp_core_add_message( __( 'Please acknowledge the import statement before continuing.', 'cboxol-group-invitations' ), 'error' );
+				bp_core_redirect( $this->get_invitations_url( $group_id ) );
+			}
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -390,7 +402,6 @@ class App {
 			'failed'            => [],
 		];
 
-		$can_direct_add     = self::current_user_can_direct_add_members( $group_id, $user_id );
 		$can_match_by_email = current_user_can( 'cboxol_match_users_by_email_address' );
 		$invite_scope       = $this->get_group_invite_scope( $group_id, $user_id );
 		$pending_invites    = [];
@@ -980,53 +991,22 @@ class App {
 			return;
 		}
 
-		if ( function_exists( 'groups_check_user_has_invite' ) && groups_check_user_has_invite( $user->ID, $group_id ) ) {
-			$results['already_invited'][] = $email;
-			return;
-		}
-
 		if ( $can_direct_add ) {
-			// Create a silent invite record before joining so that:
-			// (a) allow_invitation() passes (user is not yet a member), and
-			// (b) the add appears in the Sent Invitations panel.
-			// send_invite=false means no email or BP notification is dispatched.
-			$invite_created = (bool) groups_invite_user(
-				[
-					'user_id'     => $user->ID,
-					'group_id'    => $group_id,
-					'inviter_id'  => $inviter_id,
-					'send_invite' => false,
-				]
-			);
-
 			if ( ! groups_join_group( $group_id, $user->ID ) ) {
-				// Join failed. Remove the orphaned draft invite to avoid spurious
-				// notifications if groups_send_invites() is called later.
-				if ( $invite_created ) {
-					groups_delete_invite( $user->ID, $group_id, $inviter_id );
-				}
 				$results['failed'][] = $email;
 				return;
 			}
 
-			// Promote the draft to "sent" so the panel query (invite_sent=sent)
-			// picks it up, and so groups_send_invites() won't re-send it.
-			// If the promotion fails, delete the draft for the same reason.
-			if ( $invite_created && class_exists( 'BP_Invitation' ) ) {
-				$marked = \BP_Invitation::mark_sent_by_data(
-					[
-						'user_id'    => $user->ID,
-						'item_id'    => $group_id,
-						'inviter_id' => $inviter_id,
-					]
-				);
-				if ( ! $marked ) {
-					groups_delete_invite( $user->ID, $group_id, $inviter_id );
-				}
-			}
+			// Clear any previously sent or drafted invitation for this new member.
+			groups_delete_invite( $user->ID, $group_id );
 
 			$this->send_added_to_group_email( $group_id, $email );
 			$results['added'][] = $email;
+			return;
+		}
+
+		if ( function_exists( 'groups_check_user_has_invite' ) && groups_check_user_has_invite( $user->ID, $group_id ) ) {
+			$results['already_invited'][] = $email;
 			return;
 		}
 
@@ -1086,15 +1066,18 @@ class App {
 
 		$bp_version = defined( 'BP_VERSION' ) ? BP_VERSION : '1.2';
 		if ( version_compare( $bp_version, '5.0.0', '>=' ) ) {
-			return (bool) groups_send_invites(
+			groups_send_invites(
 				[
 					'user_id'  => $user_id,
 					'group_id' => $group_id,
 				]
 			);
+		} else {
+			groups_send_invites( $user_id, $group_id );
 		}
 
-		return (bool) groups_send_invites( $user_id, $group_id );
+		// BuddyPress sends queued invites but does not return a status value.
+		return true;
 	}
 
 	/**
