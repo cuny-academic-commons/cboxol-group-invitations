@@ -194,6 +194,10 @@ class App {
 		$group      = groups_get_current_group();
 		$sub_action = bp_action_variable( 0 );
 
+		if ( ! $group instanceof \BP_Groups_Group ) {
+			return;
+		}
+
 		$tabs = [];
 
 		if ( bp_is_item_admin() ) {
