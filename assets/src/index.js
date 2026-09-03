@@ -19,6 +19,11 @@ document.addEventListener( 'DOMContentLoaded', () => {
 		'table[data-cboxol-gi-sortable]'
 	);
 
+	const getInvitationTableStatus = ( table ) =>
+		table.parentElement.querySelector(
+			`[data-cboxol-gi-table-status][data-filter-table="${ table.dataset.filterTable }"]`
+		);
+
 	const updateInvitationSortLinks = ( table, sort, order ) => {
 		const sortParam = table.dataset.sortParam;
 		const orderParam = table.dataset.orderParam;
@@ -35,6 +40,14 @@ document.addEventListener( 'DOMContentLoaded', () => {
 
 			link.classList.toggle( 'is-active', isActive );
 			link.dataset.order = nextOrder;
+			link.setAttribute(
+				'aria-label',
+				link.dataset[
+					nextOrder === 'asc'
+						? 'sortAscendingLabel'
+						: 'sortDescendingLabel'
+				]
+			);
 			link.closest( 'th' ).setAttribute( 'aria-sort', ariaSort );
 			url.searchParams.set( sortParam, link.dataset.sort );
 			url.searchParams.set( orderParam, nextOrder );
@@ -78,6 +91,17 @@ document.addEventListener( 'DOMContentLoaded', () => {
 
 		rows.forEach( ( { row } ) => table.tBodies[ 0 ].appendChild( row ) );
 		updateInvitationSortLinks( table, sort, order );
+
+		const status = getInvitationTableStatus( table );
+		const activeLink = table.querySelector(
+			'.cboxol-gi-sort-link.is-active'
+		);
+
+		status.textContent = `${ activeLink.textContent }: ${
+			table.dataset[
+				order === 'asc' ? 'sortAscending' : 'sortDescending'
+			]
+		}`;
 	};
 
 	invitationTables.forEach( ( table ) => {
@@ -160,6 +184,10 @@ document.addEventListener( 'DOMContentLoaded', () => {
 
 				filterInvitationTable( table, filter );
 				updateInvitationFilterLinks( controls, filter );
+
+				getInvitationTableStatus(
+					table
+				).textContent = `${ controls.dataset.filterShowing } ${ link.textContent }`;
 
 				const url = new URL( window.location.href );
 				url.searchParams.set( table.dataset.filterParam, filter );

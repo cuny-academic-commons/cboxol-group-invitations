@@ -214,6 +214,15 @@ $site_filter_has_matches = 'all' === $site_filter || (bool) array_filter(
 				><?php esc_html_e( 'Added', 'cboxol-group-invitations' ); ?></a>
 			</nav>
 
+			<p
+				class="screen-reader-text"
+				aria-live="polite"
+				data-cboxol-gi-table-status
+				data-filter-table="group-invitations"
+				data-sort-ascending="<?php esc_attr_e( 'sorted ascending', 'cboxol-group-invitations' ); ?>"
+				data-sort-descending="<?php esc_attr_e( 'sorted descending', 'cboxol-group-invitations' ); ?>"
+				data-filter-showing="<?php esc_attr_e( 'Showing', 'cboxol-group-invitations' ); ?>"
+			></p>
 			<table
 				class="cboxol-gi-sent-invitations-table"
 				data-cboxol-gi-sortable
@@ -234,6 +243,9 @@ $site_filter_has_matches = 'all' === $site_filter || (bool) array_filter(
 								href="<?php echo esc_url( add_query_arg( [ 'cboxol_gi_group_sort' => 'date', 'cboxol_gi_group_order' => $group_date_next_order ], $sent_invitations_url ) ); ?>"
 								data-sort="date"
 								data-order="<?php echo esc_attr( $group_date_next_order ); ?>"
+								data-sort-ascending-label="<?php esc_attr_e( 'Sort Date ascending', 'cboxol-group-invitations' ); ?>"
+								data-sort-descending-label="<?php esc_attr_e( 'Sort Date descending', 'cboxol-group-invitations' ); ?>"
+								aria-label="<?php echo esc_attr( 'asc' === $group_date_next_order ? __( 'Sort Date ascending', 'cboxol-group-invitations' ) : __( 'Sort Date descending', 'cboxol-group-invitations' ) ); ?>"
 							><?php esc_html_e( 'Date', 'cboxol-group-invitations' ); ?></a>
 						</th>
 						<th scope="col"><?php esc_html_e( 'Status', 'cboxol-group-invitations' ); ?></th>
@@ -326,6 +338,15 @@ $site_filter_has_matches = 'all' === $site_filter || (bool) array_filter(
 					><?php esc_html_e( 'Accepted', 'cboxol-group-invitations' ); ?></a>
 				</nav>
 
+				<p
+					class="screen-reader-text"
+					aria-live="polite"
+					data-cboxol-gi-table-status
+					data-filter-table="site-invitations"
+					data-sort-ascending="<?php esc_attr_e( 'sorted ascending', 'cboxol-group-invitations' ); ?>"
+					data-sort-descending="<?php esc_attr_e( 'sorted descending', 'cboxol-group-invitations' ); ?>"
+					data-filter-showing="<?php esc_attr_e( 'Showing', 'cboxol-group-invitations' ); ?>"
+				></p>
 				<table
 					class="cboxol-gi-sent-invitations-table"
 					data-cboxol-gi-sortable
@@ -346,6 +367,9 @@ $site_filter_has_matches = 'all' === $site_filter || (bool) array_filter(
 									href="<?php echo esc_url( add_query_arg( [ 'cboxol_gi_site_sort' => 'date-sent', 'cboxol_gi_site_order' => $site_date_next_order ], $sent_invitations_url ) ); ?>"
 									data-sort="date-sent"
 									data-order="<?php echo esc_attr( $site_date_next_order ); ?>"
+									data-sort-ascending-label="<?php esc_attr_e( 'Sort Date Sent ascending', 'cboxol-group-invitations' ); ?>"
+									data-sort-descending-label="<?php esc_attr_e( 'Sort Date Sent descending', 'cboxol-group-invitations' ); ?>"
+									aria-label="<?php echo esc_attr( 'asc' === $site_date_next_order ? __( 'Sort Date Sent ascending', 'cboxol-group-invitations' ) : __( 'Sort Date Sent descending', 'cboxol-group-invitations' ) ); ?>"
 								><?php esc_html_e( 'Date Sent', 'cboxol-group-invitations' ); ?></a>
 							</th>
 							<th scope="col" aria-sort="<?php echo esc_attr( 'accepted' === $site_sort ? ( 'asc' === $site_order ? 'ascending' : 'descending' ) : 'none' ); ?>">
@@ -354,6 +378,9 @@ $site_filter_has_matches = 'all' === $site_filter || (bool) array_filter(
 									href="<?php echo esc_url( add_query_arg( [ 'cboxol_gi_site_sort' => 'accepted', 'cboxol_gi_site_order' => $site_accepted_next_order ], $sent_invitations_url ) ); ?>"
 									data-sort="accepted"
 									data-order="<?php echo esc_attr( $site_accepted_next_order ); ?>"
+									data-sort-ascending-label="<?php esc_attr_e( 'Sort Accepted ascending', 'cboxol-group-invitations' ); ?>"
+									data-sort-descending-label="<?php esc_attr_e( 'Sort Accepted descending', 'cboxol-group-invitations' ); ?>"
+									aria-label="<?php echo esc_attr( 'asc' === $site_accepted_next_order ? __( 'Sort Accepted ascending', 'cboxol-group-invitations' ) : __( 'Sort Accepted descending', 'cboxol-group-invitations' ) ); ?>"
 								><?php esc_html_e( 'Accepted', 'cboxol-group-invitations' ); ?></a>
 							</th>
 						</tr>
