@@ -195,6 +195,27 @@ document.addEventListener( 'DOMContentLoaded', () => {
 			} );
 		} );
 
+	document
+		.querySelectorAll( '[data-cboxol-gi-resend-invitation]' )
+		.forEach( ( form ) => {
+			form.addEventListener( 'submit', ( event ) => {
+				// The browser confirmation prevents accidental resend requests.
+				// eslint-disable-next-line no-alert
+				if ( ! window.confirm( form.dataset.confirmation ) ) {
+					event.preventDefault();
+					return;
+				}
+
+				const button = form.querySelector(
+					'.cboxol-gi-resend-invitation-button'
+				);
+				button.disabled = true;
+				button.classList.add( 'is-loading' );
+				button.textContent = form.dataset.resending;
+				button.setAttribute( 'aria-label', form.dataset.resending );
+			} );
+		} );
+
 	const directAddModeEl = document.getElementById(
 		'import-existing-members-mode-direct-add'
 	);

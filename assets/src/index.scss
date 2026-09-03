@@ -266,6 +266,32 @@ table.cboxol-gi-sent-invitations-table {
 	}
 }
 
+.cboxol-gi-resend-invitation {
+	display: inline;
+	margin-left: 0.5em;
+}
+
+.cboxol-gi-resend-invitation-button {
+	&.is-loading::before {
+		display: inline-block;
+		width: 0.8em;
+		height: 0.8em;
+		margin-right: 0.35em;
+		border: 2px solid currentcolor;
+		border-right-color: transparent;
+		border-radius: 50%;
+		animation: cboxol-gi-resend-spinner 0.7s linear infinite;
+		content: "";
+		vertical-align: -0.1em;
+	}
+}
+
+@keyframes cboxol-gi-resend-spinner {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
 .form-panel .panel-body fieldset.import-existing-members-mode {
 	legend {
 		font-weight: normal;

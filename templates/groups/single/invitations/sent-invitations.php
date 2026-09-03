@@ -437,7 +437,26 @@ $site_filter_has_matches = 'all' === $site_filter || (bool) array_filter(
 									</td>
 								<?php endif; ?>
 								<td><?php echo esc_html( $date_sent ); ?></td>
-								<td><?php echo esc_html( $status_text ); ?></td>
+								<td>
+									<?php echo esc_html( $status_text ); ?>
+									<?php if ( $is_pending ) : ?>
+										<form
+											class="cboxol-gi-resend-invitation"
+											method="post"
+											data-cboxol-gi-resend-invitation
+											data-confirmation="<?php esc_attr_e( 'Resend this invitation email?', 'cboxol-group-invitations' ); ?>"
+											data-resending="<?php esc_attr_e( 'Resending...', 'cboxol-group-invitations' ); ?>"
+										>
+											<input type="hidden" name="cboxol_gi_resend_site_invitation" value="<?php echo esc_attr( (string) $ia_post->ID ); ?>" />
+											<?php wp_nonce_field( 'cboxol_gi_resend_site_invitation_' . $ia_post->ID, 'cboxol_gi_resend_site_invitation_nonce', false ); ?>
+											<button
+												type="submit"
+												class="button-link cboxol-gi-resend-invitation-button"
+												aria-label="<?php echo esc_attr( sprintf( __( 'Resend invitation to %s', 'cboxol-group-invitations' ), $email ) ); ?>"
+											><?php esc_html_e( 'Resend', 'cboxol-group-invitations' ); ?></button>
+										</form>
+									<?php endif; ?>
+								</td>
 							</tr>
 						<?php endforeach; ?>
 					</tbody>

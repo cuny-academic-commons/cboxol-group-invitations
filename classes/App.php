@@ -346,7 +346,16 @@ class App {
 	 * @return void
 	 */
 	public function handle_invitations_submission(): void {
-		if ( ! bp_is_group() || ! bp_is_current_action( 'invitations' ) || ! bp_is_action_variable( 'send', 0 ) ) {
+		if ( ! bp_is_group() || ! bp_is_current_action( 'invitations' ) ) {
+			return;
+		}
+
+		if ( isset( $_POST['cboxol_gi_resend_site_invitation'] ) ) {
+			$this->handle_site_invitation_resend();
+			return;
+		}
+
+		if ( ! bp_is_action_variable( 'send', 0 ) ) {
 			return;
 		}
 
@@ -497,6 +506,85 @@ class App {
 				$this->get_invitations_url( $group_id )
 			)
 		);
+	}
+
+	/**
+	 * Resends the email notification for a pending Invite Anyone invitation.
+	 *
+	 * @return void
+	 */
+	private function handle_site_invitation_resend(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$invitation_id = isset( $_POST['cboxol_gi_resend_site_invitation'] ) ? absint( $_POST['cboxol_gi_resend_site_invitation'] ) : 0;
+		$group_id = bp_get_current_group_id();
+		$user_id  = bp_loggedin_user_id();
+		$referer  = wp_get_referer();
+		$redirect_url = wp_validate_redirect(
+			is_string( $referer ) ? $referer : '',
+			$this->get_sent_invitations_url( $group_id )
+		);
+
+		check_admin_referer(
+			'cboxol_gi_resend_site_invitation_' . $invitation_id,
+			'cboxol_gi_resend_site_invitation_nonce'
+		);
+
+		if ( ! $this->current_user_can_access_invitations_screen( $group_id, $user_id ) || ! $this->current_user_can_send_email_invites() ) {
+			bp_core_add_message( __( 'You are not allowed to resend this invitation.', 'cboxol-group-invitations' ), 'error' );
+			bp_core_redirect( $redirect_url );
+			return;
+		}
+
+		$invitation  = get_post( $invitation_id );
+		$post_type   = apply_filters( 'invite_anyone_post_type_name', 'ia_invites' );
+		$group_tax   = apply_filters( 'invite_anyone_invited_group_tax_name', 'ia_invited_groups' );
+		$invitee_tax = apply_filters( 'invite_anyone_invitee_tax_name', 'ia_invitees' );
+
+		if (
+			! $invitation instanceof \WP_Post
+			|| $post_type !== $invitation->post_type
+			|| $user_id !== (int) $invitation->post_author
+			|| 'publish' !== $invitation->post_status
+			|| get_post_meta( $invitation->ID, 'bp_ia_accepted', true )
+		) {
+			bp_core_add_message( __( 'This invitation is no longer available to resend.', 'cboxol-group-invitations' ), 'error' );
+			bp_core_redirect( $redirect_url );
+			return;
+		}
+
+		$group_terms = wp_get_post_terms( $invitation->ID, $group_tax );
+		$email_terms = wp_get_post_terms( $invitation->ID, $invitee_tax );
+		$has_group   = false;
+
+		if ( ! is_wp_error( $group_terms ) ) {
+			foreach ( $group_terms as $group_term ) {
+				if ( (string) $group_id === $group_term->name ) {
+					$has_group = true;
+					break;
+				}
+			}
+		}
+
+		if ( ! $has_group || empty( $email_terms ) || is_wp_error( $email_terms ) ) {
+			bp_core_add_message( __( 'This invitation is no longer available to resend.', 'cboxol-group-invitations' ), 'error' );
+			bp_core_redirect( $redirect_url );
+			return;
+		}
+
+		$email = str_replace( '.PLUSSIGN.', '+', $email_terms[0]->name );
+		if ( ! is_email( $email ) ) {
+			bp_core_add_message( __( 'This invitation does not have a valid email address.', 'cboxol-group-invitations' ), 'error' );
+			bp_core_redirect( $redirect_url );
+			return;
+		}
+
+		if ( $this->send_email_invitation_notification( $group_id, $email ) ) {
+			bp_core_add_message( __( 'Invitation resent.', 'cboxol-group-invitations' ) );
+		} else {
+			bp_core_add_message( __( 'The invitation could not be resent.', 'cboxol-group-invitations' ), 'error' );
+		}
+
+		bp_core_redirect( $redirect_url );
 	}
 
 	/**
@@ -866,6 +954,16 @@ class App {
 	}
 
 	/**
+	 * Returns the URL for the current group's Sent Invitations screen.
+	 *
+	 * @param int $group_id Group ID.
+	 * @return string
+	 */
+	private function get_sent_invitations_url( int $group_id ): string {
+		return bp_get_group_url( groups_get_group( $group_id ), bp_groups_get_path_chunks( [ 'invitations', 'sent-invitations' ] ) );
+	}
+
+	/**
 	 * Returns whether the current user may access the custom invitations screen.
 	 *
 	 * @param int $group_id Group ID.
@@ -1155,6 +1253,38 @@ class App {
 	 * @return bool
 	 */
 	private function create_email_invitation( int $inviter_id, int $group_id, string $email ): bool {
+		$notification = null;
+
+		if (
+			! function_exists( 'invite_anyone_record_invitation' )
+			|| ! $this->send_email_invitation_notification( $group_id, $email, $notification )
+		) {
+			return false;
+		}
+
+		$record_id = invite_anyone_record_invitation( $inviter_id, $email, $notification['message'], [ (string) $group_id ], $notification['subject'], false );
+		if ( ! $record_id ) {
+			return false;
+		}
+
+		do_action( 'sent_email_invite', $inviter_id, $email, [ $group_id ] );
+		do_action( 'sent_email_invites', $inviter_id, [ $email ], [ $group_id ] );
+
+		return true;
+	}
+
+	/**
+	 * Sends the email notification for an Invite Anyone invitation.
+	 *
+	 * This leaves the corresponding invitation record unchanged, allowing it to
+	 * be used for both the initial delivery and resends.
+	 *
+	 * @param int    $group_id Group ID.
+	 * @param string $email    Recipient email.
+	 * @param array{subject: string, message: string}|null $notification Sent notification details.
+	 * @return bool
+	 */
+	private function send_email_invitation_notification( int $group_id, string $email, ?array &$notification = null ): bool {
 		if (
 			! function_exists( 'invite_anyone_invitation_subject' )
 			|| ! function_exists( 'invite_anyone_invitation_message' )
@@ -1162,7 +1292,6 @@ class App {
 			|| ! function_exists( 'invite_anyone_get_opt_out_url' )
 			|| ! function_exists( 'invite_anyone_process_footer' )
 			|| ! function_exists( 'invite_anyone_wildcard_replace' )
-			|| ! function_exists( 'invite_anyone_record_invitation' )
 		) {
 			return false;
 		}
@@ -1203,6 +1332,10 @@ class App {
 		 * @param string $email   Invitee email address.
 		 */
 		$message = apply_filters( 'invite_anyone_invitation_message', $message, $data, $email );
+		$notification = [
+			'subject' => $subject,
+			'message' => $message,
+		];
 
 		$do_bp_email = function_exists( 'bp_send_email' ) && ! apply_filters( 'bp_email_use_wp_mail', false );
 
@@ -1228,24 +1361,16 @@ class App {
 				add_filter( 'bp_email_get_salutation', $salutation_filter, 10, 2 );
 			}
 
-			bp_send_email( 'invite-anyone-invitation', $to, $bp_email_args );
+			$sent = bp_send_email( 'invite-anyone-invitation', $to, $bp_email_args );
 
 			if ( $salutation_filter ) {
 				remove_filter( 'bp_email_get_salutation', $salutation_filter, 10 );
 			}
-		} else {
-			wp_mail( $to, $subject, $message );
+
+			return ! is_wp_error( $sent ) && (bool) $sent;
 		}
 
-		$record_id = invite_anyone_record_invitation( $inviter_id, $email, $message, [ (string) $group_id ], $subject, false );
-		if ( ! $record_id ) {
-			return false;
-		}
-
-		do_action( 'sent_email_invite', $inviter_id, $email, [ $group_id ] );
-		do_action( 'sent_email_invites', $inviter_id, [ $email ], [ $group_id ] );
-
-		return true;
+		return wp_mail( $to, $subject, $message );
 	}
 
 	/**
