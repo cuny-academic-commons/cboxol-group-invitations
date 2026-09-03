@@ -241,6 +241,31 @@ table.cboxol-gi-sent-invitations-table {
 	}
 }
 
+.cboxol-gi-invitation-filters {
+	display: flex;
+	gap: 0.25rem;
+	margin: 1rem 0;
+
+	.cboxol-gi-invitation-filter {
+		padding: 0.35em 0.75em;
+		border-radius: 1em;
+		color: inherit;
+		font-size: 0.9em;
+		text-decoration: none;
+
+		&:hover,
+		&:focus {
+			background: #f0f0f0;
+			color: inherit;
+		}
+
+		&.is-active {
+			background: #333;
+			color: #fff;
+		}
+	}
+}
+
 .form-panel .panel-body fieldset.import-existing-members-mode {
 	legend {
 		font-weight: normal;

@@ -100,6 +100,73 @@ document.addEventListener( 'DOMContentLoaded', () => {
 		} );
 	} );
 
+	const updateInvitationFilterLinks = ( controls, filter ) => {
+		const table = document.querySelector(
+			`table[data-filter-table="${ controls.dataset.filterTable }"]`
+		);
+		const filterParam = table.dataset.filterParam;
+
+		controls
+			.querySelectorAll( '.cboxol-gi-invitation-filter' )
+			.forEach( ( link ) => {
+				const isActive = link.dataset.filter === filter;
+				const url = new URL( window.location.href );
+
+				link.classList.toggle( 'is-active', isActive );
+
+				if ( isActive ) {
+					link.setAttribute( 'aria-current', 'page' );
+				} else {
+					link.removeAttribute( 'aria-current' );
+				}
+
+				url.searchParams.set( filterParam, link.dataset.filter );
+				link.href = url.toString();
+			} );
+	};
+
+	const filterInvitationTable = ( table, filter ) => {
+		let hasVisibleRows = false;
+
+		[ ...table.tBodies[ 0 ].rows ].forEach( ( row ) => {
+			const isHidden =
+				filter !== 'all' && row.dataset.filterStatus !== filter;
+
+			row.hidden = isHidden;
+			hasVisibleRows ||= ! isHidden;
+		} );
+
+		table.parentElement.querySelector( '.cboxol-gi-filter-empty' ).hidden =
+			hasVisibleRows;
+	};
+
+	document
+		.querySelectorAll( '[data-cboxol-gi-invitation-filters]' )
+		.forEach( ( controls ) => {
+			controls.addEventListener( 'click', ( event ) => {
+				const link = event.target.closest(
+					'.cboxol-gi-invitation-filter'
+				);
+
+				if ( ! link || ! controls.contains( link ) ) {
+					return;
+				}
+
+				event.preventDefault();
+				const filter = link.dataset.filter;
+				const table = document.querySelector(
+					`table[data-filter-table="${ controls.dataset.filterTable }"]`
+				);
+
+				filterInvitationTable( table, filter );
+				updateInvitationFilterLinks( controls, filter );
+
+				const url = new URL( window.location.href );
+				url.searchParams.set( table.dataset.filterParam, filter );
+				window.history.replaceState( {}, '', url );
+			} );
+		} );
+
 	const directAddModeEl = document.getElementById(
 		'import-existing-members-mode-direct-add'
 	);

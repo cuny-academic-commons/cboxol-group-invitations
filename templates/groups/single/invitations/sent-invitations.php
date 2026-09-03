@@ -16,8 +16,10 @@ $sent_invitations_url = bp_get_group_url(
 // phpcs:disable WordPress.Security.NonceVerification.Recommended
 $group_sort  = isset( $_GET['cboxol_gi_group_sort'] ) ? sanitize_key( wp_unslash( $_GET['cboxol_gi_group_sort'] ) ) : 'date';
 $group_order = isset( $_GET['cboxol_gi_group_order'] ) ? sanitize_key( wp_unslash( $_GET['cboxol_gi_group_order'] ) ) : 'desc';
+$group_filter = isset( $_GET['cboxol_gi_group_filter'] ) ? sanitize_key( wp_unslash( $_GET['cboxol_gi_group_filter'] ) ) : 'all';
 $site_sort   = isset( $_GET['cboxol_gi_site_sort'] ) ? sanitize_key( wp_unslash( $_GET['cboxol_gi_site_sort'] ) ) : 'accepted';
 $site_order  = isset( $_GET['cboxol_gi_site_order'] ) ? sanitize_key( wp_unslash( $_GET['cboxol_gi_site_order'] ) ) : 'desc';
+$site_filter = isset( $_GET['cboxol_gi_site_filter'] ) ? sanitize_key( wp_unslash( $_GET['cboxol_gi_site_filter'] ) ) : 'all';
 // phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 if ( 'date' !== $group_sort ) {
@@ -26,11 +28,17 @@ if ( 'date' !== $group_sort ) {
 if ( ! in_array( $group_order, [ 'asc', 'desc' ], true ) ) {
 	$group_order = 'desc';
 }
+if ( ! in_array( $group_filter, [ 'all', 'pending', 'added' ], true ) ) {
+	$group_filter = 'all';
+}
 if ( ! in_array( $site_sort, [ 'date-sent', 'accepted' ], true ) ) {
 	$site_sort = 'accepted';
 }
 if ( ! in_array( $site_order, [ 'asc', 'desc' ], true ) ) {
 	$site_order = 'desc';
+}
+if ( ! in_array( $site_filter, [ 'all', 'pending', 'accepted' ], true ) ) {
+	$site_filter = 'all';
 }
 
 // BP-native group invitations sent by the current user to this group.
@@ -52,6 +60,8 @@ if ( ! is_array( $bp_invitations ) ) {
 	$bp_invitations = [];
 }
 
+$has_bp_invitations = (bool) $bp_invitations;
+
 usort(
 	$bp_invitations,
 	static function ( $first, $second ) use ( $group_order ): int {
@@ -65,6 +75,7 @@ usort(
 // Invite Anyone (site) invitations: stored as ia_invites CPT posts authored by
 // the current user and tagged with this group in the ia_invited_groups taxonomy.
 $ia_invitations = [];
+$has_ia_invitations = false;
 $ia_post_type   = apply_filters( 'invite_anyone_post_type_name', 'ia_invites' );
 $ia_group_tax   = apply_filters( 'invite_anyone_invited_group_tax_name', 'ia_invited_groups' );
 $ia_invitee_tax = apply_filters( 'invite_anyone_invitee_tax_name', 'ia_invitees' );
@@ -91,6 +102,8 @@ if ( class_exists( 'Invite_Anyone_Invitation' ) ) {
 	$ia_invitations = $ia_query->posts;
 	wp_reset_postdata();
 }
+
+$has_ia_invitations = (bool) $ia_invitations;
 
 usort(
 	$ia_invitations,
@@ -125,8 +138,40 @@ usort(
 );
 
 $group_date_next_order = 'date' === $group_sort && 'desc' === $group_order ? 'asc' : 'desc';
+$group_filter_url_args = [
+	'cboxol_gi_group_sort'  => $group_sort,
+	'cboxol_gi_group_order' => $group_order,
+];
+$group_filter_has_matches = 'all' === $group_filter || (bool) array_filter(
+	$bp_invitations,
+	static function ( $invitation ) use ( $group_filter, $group_id ): bool {
+		if ( ! isset( $invitation->user_id ) ) {
+			return false;
+		}
+
+		$is_added = groups_is_user_member( $invitation->user_id, $group_id );
+
+		return ( 'pending' === $group_filter && ! $is_added ) || ( 'added' === $group_filter && $is_added );
+	}
+);
 $site_date_next_order  = 'date-sent' === $site_sort && 'desc' === $site_order ? 'asc' : 'desc';
 $site_accepted_next_order = 'accepted' === $site_sort && 'desc' === $site_order ? 'asc' : 'desc';
+$site_filter_url_args = [
+	'cboxol_gi_site_sort'  => $site_sort,
+	'cboxol_gi_site_order' => $site_order,
+];
+$site_filter_has_matches = 'all' === $site_filter || (bool) array_filter(
+	$ia_invitations,
+	static function ( $invitation ) use ( $site_filter ): bool {
+		if ( ! $invitation instanceof WP_Post ) {
+			return false;
+		}
+
+		$is_pending = ! get_post_meta( $invitation->ID, 'bp_ia_accepted', true );
+
+		return ( 'pending' === $site_filter && $is_pending ) || ( 'accepted' === $site_filter && ! $is_pending );
+	}
+);
 
 ?>
 
@@ -142,12 +187,40 @@ $site_accepted_next_order = 'accepted' === $site_sort && 'desc' === $site_order 
 
 		<p class="invite-copy"><?php esc_html_e( 'Invitations sent to existing site members to join this group.', 'cboxol-group-invitations' ); ?></p>
 
-		<?php if ( $bp_invitations ) : ?>
+		<?php if ( $has_bp_invitations ) : ?>
+			<nav
+				class="cboxol-gi-invitation-filters"
+				aria-label="<?php esc_attr_e( 'Filter group invitations', 'cboxol-group-invitations' ); ?>"
+				data-cboxol-gi-invitation-filters
+				data-filter-table="group-invitations"
+			>
+				<a
+					class="cboxol-gi-invitation-filter<?php echo 'all' === $group_filter ? ' is-active' : ''; ?>"
+					href="<?php echo esc_url( add_query_arg( array_merge( $group_filter_url_args, [ 'cboxol_gi_group_filter' => 'all' ] ), $sent_invitations_url ) ); ?>"
+					data-filter="all"
+					<?php echo 'all' === $group_filter ? 'aria-current="page"' : ''; ?>
+				><?php esc_html_e( 'All', 'cboxol-group-invitations' ); ?></a>
+				<a
+					class="cboxol-gi-invitation-filter<?php echo 'pending' === $group_filter ? ' is-active' : ''; ?>"
+					href="<?php echo esc_url( add_query_arg( array_merge( $group_filter_url_args, [ 'cboxol_gi_group_filter' => 'pending' ] ), $sent_invitations_url ) ); ?>"
+					data-filter="pending"
+					<?php echo 'pending' === $group_filter ? 'aria-current="page"' : ''; ?>
+				><?php esc_html_e( 'Pending', 'cboxol-group-invitations' ); ?></a>
+				<a
+					class="cboxol-gi-invitation-filter<?php echo 'added' === $group_filter ? ' is-active' : ''; ?>"
+					href="<?php echo esc_url( add_query_arg( array_merge( $group_filter_url_args, [ 'cboxol_gi_group_filter' => 'added' ] ), $sent_invitations_url ) ); ?>"
+					data-filter="added"
+					<?php echo 'added' === $group_filter ? 'aria-current="page"' : ''; ?>
+				><?php esc_html_e( 'Added', 'cboxol-group-invitations' ); ?></a>
+			</nav>
+
 			<table
 				class="cboxol-gi-sent-invitations-table"
 				data-cboxol-gi-sortable
 				data-sort-param="cboxol_gi_group_sort"
 				data-order-param="cboxol_gi_group_order"
+				data-filter-param="cboxol_gi_group_filter"
+				data-filter-table="group-invitations"
 			>
 				<thead>
 					<tr>
@@ -186,8 +259,15 @@ $site_accepted_next_order = 'accepted' === $site_sort && 'desc' === $site_order 
 						$invite_status = $is_member
 							? __( 'Added', 'cboxol-group-invitations' )
 							: __( 'Pending', 'cboxol-group-invitations' );
+						$is_filtered_out = ( 'pending' === $group_filter && $is_member ) || ( 'added' === $group_filter && ! $is_member );
 						?>
-						<tr data-sort-date="<?php echo esc_attr( (string) strtotime( $invite->date_modified ) ); ?>">
+						<tr
+							data-sort-date="<?php echo esc_attr( (string) strtotime( $invite->date_modified ) ); ?>"
+							data-filter-status="<?php echo esc_attr( $is_member ? 'added' : 'pending' ); ?>"
+							<?php if ( $is_filtered_out ) : ?>
+								hidden
+							<?php endif; ?>
+						>
 							<td>
 								<a href="<?php echo esc_url( $profile_url ); ?>"><?php echo esc_html( $display_name ); ?></a>
 								<span class="cboxol-gi-username">(<?php echo esc_html( $username ); ?>)</span>
@@ -201,6 +281,14 @@ $site_accepted_next_order = 'accepted' === $site_sort && 'desc' === $site_order 
 					<?php endforeach; ?>
 				</tbody>
 			</table>
+			<p
+				class="invite-copy cboxol-gi-filter-empty"
+				<?php if ( $group_filter_has_matches ) : ?>
+					hidden
+				<?php endif; ?>
+			>
+				<?php esc_html_e( 'No invitations match this filter.', 'cboxol-group-invitations' ); ?>
+			</p>
 		<?php else : ?>
 			<p class="invite-copy"><?php esc_html_e( 'You have no group invitations or direct additions for this group.', 'cboxol-group-invitations' ); ?></p>
 		<?php endif; ?>
@@ -211,12 +299,40 @@ $site_accepted_next_order = 'accepted' === $site_sort && 'desc' === $site_order 
 
 			<p class="invite-copy"><?php esc_html_e( 'Invitations to join the site (and this group) sent to email addresses not yet registered.', 'cboxol-group-invitations' ); ?></p>
 
-			<?php if ( $ia_invitations ) : ?>
+			<?php if ( $has_ia_invitations ) : ?>
+				<nav
+					class="cboxol-gi-invitation-filters"
+					aria-label="<?php esc_attr_e( 'Filter site invitations', 'cboxol-group-invitations' ); ?>"
+					data-cboxol-gi-invitation-filters
+					data-filter-table="site-invitations"
+				>
+					<a
+						class="cboxol-gi-invitation-filter<?php echo 'all' === $site_filter ? ' is-active' : ''; ?>"
+						href="<?php echo esc_url( add_query_arg( array_merge( $site_filter_url_args, [ 'cboxol_gi_site_filter' => 'all' ] ), $sent_invitations_url ) ); ?>"
+						data-filter="all"
+						<?php echo 'all' === $site_filter ? 'aria-current="page"' : ''; ?>
+					><?php esc_html_e( 'All', 'cboxol-group-invitations' ); ?></a>
+					<a
+						class="cboxol-gi-invitation-filter<?php echo 'pending' === $site_filter ? ' is-active' : ''; ?>"
+						href="<?php echo esc_url( add_query_arg( array_merge( $site_filter_url_args, [ 'cboxol_gi_site_filter' => 'pending' ] ), $sent_invitations_url ) ); ?>"
+						data-filter="pending"
+						<?php echo 'pending' === $site_filter ? 'aria-current="page"' : ''; ?>
+					><?php esc_html_e( 'Pending', 'cboxol-group-invitations' ); ?></a>
+					<a
+						class="cboxol-gi-invitation-filter<?php echo 'accepted' === $site_filter ? ' is-active' : ''; ?>"
+						href="<?php echo esc_url( add_query_arg( array_merge( $site_filter_url_args, [ 'cboxol_gi_site_filter' => 'accepted' ] ), $sent_invitations_url ) ); ?>"
+						data-filter="accepted"
+						<?php echo 'accepted' === $site_filter ? 'aria-current="page"' : ''; ?>
+					><?php esc_html_e( 'Accepted', 'cboxol-group-invitations' ); ?></a>
+				</nav>
+
 				<table
 					class="cboxol-gi-sent-invitations-table"
 					data-cboxol-gi-sortable
 					data-sort-param="cboxol_gi_site_sort"
 					data-order-param="cboxol_gi_site_order"
+					data-filter-param="cboxol_gi_site_filter"
+					data-filter-table="site-invitations"
 				>
 					<thead>
 						<tr>
@@ -262,6 +378,8 @@ $site_accepted_next_order = 'accepted' === $site_sort && 'desc' === $site_order 
 							$status_text = $accepted_on
 								? date_i18n( get_option( 'date_format' ), strtotime( $accepted_on ) )
 								: __( 'Pending', 'cboxol-group-invitations' );
+							$is_pending      = ! $accepted_on;
+							$is_filtered_out = ( 'pending' === $site_filter && ! $is_pending ) || ( 'accepted' === $site_filter && $is_pending );
 
 							$matched_user = $can_match_by_email ? get_user_by( 'email', $email ) : null;
 							?>
@@ -269,6 +387,10 @@ $site_accepted_next_order = 'accepted' === $site_sort && 'desc' === $site_order 
 								data-sort-date-sent="<?php echo esc_attr( (string) strtotime( $ia_post->post_date ) ); ?>"
 								data-sort-accepted="<?php echo esc_attr( $accepted_on ? (string) strtotime( $accepted_on ) : '' ); ?>"
 								data-sort-pending="<?php echo esc_attr( $accepted_on ? '0' : '1' ); ?>"
+								data-filter-status="<?php echo esc_attr( $is_pending ? 'pending' : 'accepted' ); ?>"
+								<?php if ( $is_filtered_out ) : ?>
+									hidden
+								<?php endif; ?>
 							>
 								<td><?php echo esc_html( $email ); ?></td>
 								<?php if ( $can_match_by_email ) : ?>
@@ -293,6 +415,14 @@ $site_accepted_next_order = 'accepted' === $site_sort && 'desc' === $site_order 
 						<?php endforeach; ?>
 					</tbody>
 				</table>
+				<p
+					class="invite-copy cboxol-gi-filter-empty"
+					<?php if ( $site_filter_has_matches ) : ?>
+						hidden
+					<?php endif; ?>
+				>
+					<?php esc_html_e( 'No invitations match this filter.', 'cboxol-group-invitations' ); ?>
+				</p>
 			<?php else : ?>
 				<p class="invite-copy"><?php esc_html_e( 'You have no site invitations for this group.', 'cboxol-group-invitations' ); ?></p>
 			<?php endif; ?>
