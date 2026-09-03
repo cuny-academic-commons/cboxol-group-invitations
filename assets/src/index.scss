@@ -213,6 +213,32 @@
 
 table.cboxol-gi-sent-invitations-table {
 	width: 100%;
+
+	.cboxol-gi-sort-link {
+		color: inherit;
+		text-decoration: underline;
+
+		&::after {
+			display: inline-block;
+			margin-left: 0.3em;
+			content: "\21C5";
+			font-size: 0.8em;
+			text-decoration: none;
+		}
+
+		&:hover,
+		&:focus {
+			color: inherit;
+		}
+
+		&.is-active::after {
+			content: "\25BE";
+		}
+	}
+
+	th[aria-sort="ascending"] .cboxol-gi-sort-link::after {
+		content: "\25B4";
+	}
 }
 
 .form-panel .panel-body fieldset.import-existing-members-mode {
