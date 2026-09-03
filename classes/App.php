@@ -516,10 +516,10 @@ class App {
 	private function handle_site_invitation_resend(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$invitation_id = isset( $_POST['cboxol_gi_resend_site_invitation'] ) ? absint( $_POST['cboxol_gi_resend_site_invitation'] ) : 0;
-		$group_id = bp_get_current_group_id();
-		$user_id  = bp_loggedin_user_id();
-		$referer  = wp_get_referer();
-		$redirect_url = wp_validate_redirect(
+		$group_id      = bp_get_current_group_id();
+		$user_id       = bp_loggedin_user_id();
+		$referer       = wp_get_referer();
+		$redirect_url  = wp_validate_redirect(
 			is_string( $referer ) ? $referer : '',
 			$this->get_sent_invitations_url( $group_id )
 		);
@@ -1279,8 +1279,8 @@ class App {
 	 * This leaves the corresponding invitation record unchanged, allowing it to
 	 * be used for both the initial delivery and resends.
 	 *
-	 * @param int    $group_id Group ID.
-	 * @param string $email    Recipient email.
+	 * @param int                                          $group_id Group ID.
+	 * @param string                                       $email    Recipient email.
 	 * @param array{subject: string, message: string}|null $notification Sent notification details.
 	 * @return bool
 	 */
@@ -1331,7 +1331,7 @@ class App {
 		 * @param array  $data    Invitation context.
 		 * @param string $email   Invitee email address.
 		 */
-		$message = apply_filters( 'invite_anyone_invitation_message', $message, $data, $email );
+		$message      = apply_filters( 'invite_anyone_invitation_message', $message, $data, $email );
 		$notification = [
 			'subject' => $subject,
 			'message' => $message,
